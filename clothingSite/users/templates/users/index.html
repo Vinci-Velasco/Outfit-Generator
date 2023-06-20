@@ -1,0 +1,16 @@
+{% extends "users/layout.html" %}
+{% block body %}
+    <h1>Welcome to Outfit Generator</h1>
+
+    {% if message %}
+    <div>{{ message }}</div>
+    {% endif %}
+    <br>
+
+    <form action="{% url 'users:signup' %}" method="get">
+        <input type="submit" value="Sign-up">
+    </form>
+    <form action="{% url 'users:login' %}" method="get">
+        <input type="submit" value="Login">
+    </form>
+{% endblock %}
