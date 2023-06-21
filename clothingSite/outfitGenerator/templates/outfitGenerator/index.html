@@ -1,6 +1,20 @@
 {% extends "outfitGenerator/layout.html" %}
 {% block body %}
-    <h1>Hello World!</h1>
+    <h1>Outfit Generator</h1>
+
+    <form action="{% url 'outfitGenerator:wardrobe' %}" method="get">
+        <input type="submit" value="Wardrobe">
+    </form>
+
+    <form action="{% url 'outfitGenerator:generate_outfit' %}" method="get">
+        <input type="submit" value="Generate Outfit">
+    </form>
+
+    <form action="{% url 'outfitGenerator:generate_week' %}" method="get">
+        <input type="submit" value="Generate Week">
+    </form>
+    <br><br>
+
     <form action="{% url 'users:logout' %}" method="get">
         {% csrf_token %}
         <input type="submit" value="Logout">
