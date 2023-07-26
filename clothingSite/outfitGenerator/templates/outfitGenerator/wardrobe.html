@@ -1,4 +1,51 @@
 {% extends "outfitGenerator/layout.html" %}
 {% block body %}
-<p>Wardrobe!</p>
+    <h1>Wardrobe</h1>
+
+    {% if topclothing %}
+        {% for clothing in topclothing %}
+            <div>{{ clothing }}</div>
+        {% endfor %}
+    {% else %}
+        <p>You have no top clothing in your wardrobe!</p>
+    {% endif %}
+
+    {% if bottomclothing %}
+        {% for clothing in bottomclothing %}
+            <div>{{ clothing }}</div>
+        {% endfor %}
+    {% else %}
+        <p>You have no bottom clothing in your wardrobe!</p>
+    {% endif %}
+
+    {% if shoes %}
+        {% for shoe in shoes %}
+            <div>{{ shoe }}</div>
+        {% endfor %}
+    {% else %}
+        <p>You have no shoes in your wardrobe!</p>
+    {% endif %}
+
+    <h3>Add Top Clothing</h3>
+    <form action="{% url 'outfitGenerator:add-top' %}" method="post">
+        {% csrf_token %}
+        {{ topform }}
+        <input type="submit" value="Add">
+    </form>
+
+    <br>
+    <h3>Add Bottom Clothing</h3>
+    <form action="{% url 'outfitGenerator:add-bottom' %}" method="post">
+        {% csrf_token %}
+        {{ bottomform }}
+        <input type="submit" value="Add">
+    </form>
+
+    <br>
+    <h3>Add Shoes</h3>
+    <form action="{% url 'outfitGenerator:add-shoes' %}" method="post">
+        {% csrf_token %}
+        {{ shoeform }}
+        <input type="submit" value="Add">
+    </form>
 {% endblock %}
