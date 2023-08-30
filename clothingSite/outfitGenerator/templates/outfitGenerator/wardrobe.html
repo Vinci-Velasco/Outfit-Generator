@@ -4,7 +4,11 @@
 
     {% if topclothing %}
         {% for clothing in topclothing %}
-            <div>{{ clothing }}</div>
+            <p>{{ clothing }}</p>
+            <form action="{% url 'outfitGenerator:remove_clothing' 'top' clothing.pk %}" method="post">
+                {% csrf_token %}
+                <input type="submit" value="Remove">
+            </form>
         {% endfor %}
     {% else %}
         <p>You have no top clothing in your wardrobe!</p>
@@ -12,7 +16,11 @@
 
     {% if bottomclothing %}
         {% for clothing in bottomclothing %}
-            <div>{{ clothing }}</div>
+            <p>{{ clothing }}</p>
+            <form action="{% url 'outfitGenerator:remove_clothing' 'bottom' clothing.pk %}" method="post">
+                {% csrf_token %}
+                <input type="submit" value="Remove">
+            </form>
         {% endfor %}
     {% else %}
         <p>You have no bottom clothing in your wardrobe!</p>
@@ -20,14 +28,19 @@
 
     {% if shoes %}
         {% for shoe in shoes %}
-            <div>{{ shoe }}</div>
+            <p>{{ shoe }}</p>
+            <p>{{ clothing }}</p>
+            <form action="{% url 'outfitGenerator:remove_clothing' 'shoes' shoe.pk %}" method="post">
+                {% csrf_token %}
+                <input type="submit" value="Remove">
+            </form>
         {% endfor %}
     {% else %}
         <p>You have no shoes in your wardrobe!</p>
     {% endif %}
 
     <h3>Add Top Clothing</h3>
-    <form action="{% url 'outfitGenerator:add-top' %}" method="post">
+    <form action="{% url 'outfitGenerator:add_clothing' 'top' %}" method="post">
         {% csrf_token %}
         {{ topform }}
         <input type="submit" value="Add">
@@ -35,7 +48,7 @@
 
     <br>
     <h3>Add Bottom Clothing</h3>
-    <form action="{% url 'outfitGenerator:add-bottom' %}" method="post">
+    <form action="{% url 'outfitGenerator:add_clothing' 'bottom' %}" method="post">
         {% csrf_token %}
         {{ bottomform }}
         <input type="submit" value="Add">
@@ -43,7 +56,7 @@
 
     <br>
     <h3>Add Shoes</h3>
-    <form action="{% url 'outfitGenerator:add-shoes' %}" method="post">
+    <form action="{% url 'outfitGenerator:add_clothing' 'shoes' %}" method="post">
         {% csrf_token %}
         {{ shoeform }}
         <input type="submit" value="Add">
