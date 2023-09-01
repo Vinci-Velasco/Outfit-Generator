@@ -1,22 +1,41 @@
-{% extends "outfitGenerator/layout.html" %}
-{% block body %}
-    <h1>Outfit Generator</h1>
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Outfit Generator</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'outfitGenerator/index.css' %}">
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+        <h1>Outfit Generator</h1>
 
-    <form action="{% url 'outfitGenerator:wardrobe' %}" method="get">
-        <input type="submit" value="Wardrobe">
-    </form>
+        <form action="{% url 'outfitGenerator:wardrobe' %}" method="get">
+            <input type="submit" value="Wardrobe">
+        </form>
 
-    <form action="{% url 'outfitGenerator:generate_outfit' %}" method="get">
-        <input type="submit" value="Generate Outfit">
-    </form>
+        <form action="{% url 'outfitGenerator:generate_outfit' %}" method="get">
+            <input type="submit" value="Generate Outfit">
+        </form>
 
-    <form action="{% url 'outfitGenerator:generate_week' %}" method="get">
-        <input type="submit" value="Generate Week">
-    </form>
-    <br><br>
+        <form action="{% url 'outfitGenerator:generate_week' %}" method="get">
+            <input type="submit" value="Generate Week">
+        </form>
+        <br><br>
 
-    <form action="{% url 'users:logout' %}" method="get">
-        {% csrf_token %}
-        <input type="submit" value="Logout">
-    </form>
-{% endblock %}
+        <form action="{% url 'users:logout' %}" method="get">
+            {% csrf_token %}
+            <input type="submit" value="Logout">
+        </form>
+        <script src="" async defer></script>
+    </body>
+</html>

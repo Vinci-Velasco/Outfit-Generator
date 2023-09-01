@@ -7,23 +7,23 @@ class Clothing(models.Model):
     # Later on, change this to incorporate colour using hexadecimal values and convert into colour
     # wheel options
     class ColourWheel(models.TextChoices):
-        RED = "Red", "Red",
-        ORANGE = "Orange", "Orange",
-        YELLOW = "Yellow", "Yellow",
-        YELLOWGREEN = "Yellow-Green", "Yellow-Green",
-        GREEN = "Green", "Green",
-        BLUEGREEN = "Blue-Green", "Blue-Green",
-        BLUE = "Blue", "Blue",
-        BLUEVIOLET = "Blue-Violet", "Blue-Violet",
-        VIOLET = "Violet", "Violet",
-        MAUVE = "Mauve", "Mauve",
-        MAUVEPINK = "Mauve-Pink", "Mauve-Pink",
-        PINK = "Pink", "Pink",
+        RED = "#FF0000", "Red",
+        ORANGE = "#FFA500", "Orange",
+        YELLOW = "#FFFF00", "Yellow",
+        YELLOWGREEN = "#9ACD32", "Yellow-Green",
+        GREEN = "#00FF00", "Green",
+        BLUEGREEN = "#0D98BA", "Blue-Green",
+        BLUE = "#0000FF", "Blue",
+        BLUEVIOLET = "#8a2be2", "Blue-Violet",
+        VIOLET = "#7F00FF", "Violet",
+        MAUVE = "#e0b0ff", "Mauve",
+        MAUVEPINK = "#C77398", "Mauve-Pink",
+        PINK = "#FFC0CB", "Pink",
 
         # NEUTRALS
-        BLACK = "Black", "Black",
-        WHITE = "White", "white",
-        GREY = "Grey", "Grey",
+        BLACK = "#242526", "Black", # slight off-black to distinguish black border lines of clothing
+        WHITE = "#f7f5f0", "White", # slight off-white to distinguish black border lines of clothing
+        GREY = "#808080", "Grey",
 
     colour = models.CharField(max_length=15, choices=ColourWheel.choices, default=ColourWheel.RED)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
@@ -35,7 +35,7 @@ class TopClothing(Clothing):
     class Type(models.TextChoices):
         TSHIRT = "T-Shirt", "T-Shirt",
         DRESS_SHIRT = "Dress Shirt", "Dress Shirt",
-        JACKET = "Jacket", "Jacket",
+        HOODIE = "Hoodie", "Hoodie",
 
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.TSHIRT)
 
@@ -57,7 +57,6 @@ class Shoe(Clothing):
     class Type(models.TextChoices):
         SNEAKERS = "Sneakers", "Sneakers",
         DRESS_SHOES = "Dress Shoes", "Dress Shoes",
-        RUNNING_SHOES = "Running Shoes", "Running Shoes",
 
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.SNEAKERS)
 
