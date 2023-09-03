@@ -17,7 +17,18 @@
         <!--[if lt IE 7]>
             <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
         <![endif]-->
-        <p>Generate an outfit!</p>
-        <script src="" async defer></script>
+        <h1>Generate an Outfit</h1>
+        <form action="{% url 'outfitGenerator:index' %}" method="get">
+            <input type="submit" value="Home">
+        </form>
+        <br>
+
+
+
+        <br>
+        <form action="{% url 'outfitGenerator:generate_outfit' %}" method="post">
+            {% csrf_token %}
+            <input type="submit" value="Generate">
+        </form>
     </body>
 </html>
