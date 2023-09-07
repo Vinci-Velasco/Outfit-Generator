@@ -11,6 +11,7 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         {% load static %}
+        <script src="{% static 'outfitGenerator/wardrobe.js' %}" async defer></script>
         <link rel="stylesheet" href="{% static 'outfitGenerator/index.css' %}">
     </head>
     <body>
@@ -22,8 +23,48 @@
             <input type="submit" value="Home">
         </form>
         <br>
+        {% if error %}
+            {{ error }}
+        {% endif %}
+        {% if topclothing %}
+            {% for clothing in topclothing %}
 
+                {% if clothing.type == "T-Shirt" %}
+                    {% include "outfitGenerator/svg_templates/top/tshirt.html" %}
+                {% elif clothing.type == "Dress Shirt" %}
+                    {% include "outfitGenerator/svg_templates/top/dress_shirt.html" %}
+                {% elif clothing.type == "Hoodie" %}
+                    {% include "outfitGenerator/svg_templates/top/hoodie.html" %}
+                {% endif %}
 
+            {% endfor %}
+        {% endif %}
+
+        {% if bottomclothing %}
+            {% for clothing in bottomclothing %}
+
+                {% if clothing.type == "Jeans" %}
+                    {% include "outfitGenerator/svg_templates/bottom/jeans.html" %}
+                {% elif clothing.type == "Dress Pants" %}
+                    {% include "outfitGenerator/svg_templates/bottom/dress_pants.html" %}
+                {% elif clothing.type == "Sweatpants" %}
+                    {% include "outfitGenerator/svg_templates/bottom/sweatpants.html" %}
+                {% endif %}
+
+            {% endfor %}
+        {% endif %}
+
+        {% if shoes %}
+            {% for shoe in shoes %}
+
+                {% if shoe.type == "Sneakers" %}
+                    {% include "outfitGenerator/svg_templates/shoes/sneakers.html" %}
+                {% elif shoe.type == "Dress Shoes" %}
+                    {% include "outfitGenerator/svg_templates/shoes/dress_shoes.html" %}
+                {% endif %}
+
+            {% endfor %}
+        {% endif %}
 
         <br>
         <form action="{% url 'outfitGenerator:generate_outfit' %}" method="post">

@@ -8,7 +8,9 @@ class Clothing(models.Model):
     # wheel options
     class ColourWheel(models.TextChoices):
         RED = "#FF0000", "Red",
+        REDORRANGE = "#ff5349", "Red-Orange",
         ORANGE = "#FFA500", "Orange",
+        YELLOWORANGE = "#FFAE42", "Yellow-Orange",
         YELLOW = "#FFFF00", "Yellow",
         YELLOWGREEN = "#9ACD32", "Yellow-Green",
         GREEN = "#00FF00", "Green",
@@ -16,14 +18,13 @@ class Clothing(models.Model):
         BLUE = "#0000FF", "Blue",
         BLUEVIOLET = "#8a2be2", "Blue-Violet",
         VIOLET = "#7F00FF", "Violet",
-        MAUVE = "#e0b0ff", "Mauve",
-        MAUVEPINK = "#C77398", "Mauve-Pink",
-        PINK = "#FFC0CB", "Pink",
+        REDVIOLET = "#922b3e", "Red-Violet",
 
         # NEUTRALS
         BLACK = "#242526", "Black", # slight off-black to distinguish black border lines of clothing
         WHITE = "#f7f5f0", "White", # slight off-white to distinguish black border lines of clothing
         GREY = "#808080", "Grey",
+        BROWN = "#964B00", "Brown"
 
     colour = models.CharField(max_length=15, choices=ColourWheel.choices, default=ColourWheel.RED)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)

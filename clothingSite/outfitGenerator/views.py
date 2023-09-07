@@ -1,9 +1,29 @@
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.db.models import Q
+
+import random
 
 from . import models
 from . import forms
+
+COMPLIMENTARY_MAP = {
+                  "#FF0000": "#00FF00",
+                  "#ff5349": "#0D98BA",
+                  "#FFA500": "#0000FF",
+                  "#FFAE42": "#8a2be2",
+                  "#FFFF00": "#7F00FF",
+                  "#9ACD32": "#922b3e",
+                  "#00FF00": "#FF0000",
+                  "#0D98BA": "#ff5349",
+                  "#0000FF": "#FFA500",
+                  "#8a2be2": "#FFAE42",
+                  "#7F00FF": "#FFFF00",
+                  "#922b3e": "#9ACD32",
+                  }
+
+NEUTRALS = ["#242526", "#f7f5f0", "#808080", "#964B00"]
 
 def index(request):
     if not request.user.is_authenticated:
@@ -12,9 +32,12 @@ def index(request):
     return render(request, "outfitGenerator/index.html")
 
 def wardrobe_view(request):
-    top_clothing = models.TopClothing.objects.all()
-    bottom_clothing = models.BottomClothing.objects.all()
-    shoes = models.Shoe.objects.all()
+    if not request.user.is_authenticated:
+        return HttpResponseRedirect(reverse("users:index"))
+
+    top_clothing = _get_all_from_user("top", request.user)
+    bottom_clothing = _get_all_from_user("bottom", request.user)
+    shoes = _get_all_from_user("shoes", request.user)
 
     return render(request, "outfitGenerator/wardrobe.html", {
         "topclothing": top_clothing,
@@ -27,7 +50,7 @@ def wardrobe_view(request):
 
 def add_clothing_view(request, clothing_type):
     if request.method == "POST":
-        form = get_form(request, clothing_type)
+        form = _get_form(request, clothing_type)
         if form.is_valid():
             if request.user.is_authenticated:
                 form = form.save(commit=False)
@@ -38,21 +61,55 @@ def add_clothing_view(request, clothing_type):
 
 def remove_clothing_view(request, clothing_type, pk):
     if request.method == "POST":
-        obj = get_clothing_obj(clothing_type, pk)
+        obj = _get_clothing_obj(clothing_type, pk)
         obj.delete()
 
     return HttpResponseRedirect(reverse("outfitGenerator:wardrobe"))
 
 def generate_outfit_view(request):
-    return render(request, "outfitGenerator/generate_outfit.html")
+    if not request.user.is_authenticated:
+        return HttpResponseRedirect(reverse("users:index"))
+
+    if request.method == "POST":
+        clothing = _select_outfit(request.user)
+        if clothing is None:
+            error_msg = "Could not find matching clothes (no matching colours or missing clothing in category)"
+            return render(request, "outfitGenerator/generate_outfit.html", {
+            "error": error_msg
+        })
+
+        top_clothing, bottom_clothing, shoes = clothing
+        return render(request, "outfitGenerator/generate_outfit.html", {
+            "topclothing": top_clothing,
+            "bottomclothing": bottom_clothing,
+            "shoes": shoes
+        })
+    else:
+        return render(request, "outfitGenerator/generate_outfit.html")
 
 def generate_week_view(request):
+    if not request.user.is_authenticated:
+        return HttpResponseRedirect(reverse("users:index"))
+
     return render(request, "outfitGenerator/generate_week.html")
 
 # Helper functions
 
+# Return all of instances a specified clothing type that belongs to a user
+def _get_all_from_user(clothing_type, user):
+    if clothing_type == "top":
+        clothing = models.TopClothing.objects.filter(user=user)
+    elif clothing_type == "bottom":
+        clothing = models.BottomClothing.objects.filter(user=user)
+    elif clothing_type == "shoes":
+        clothing = models.Shoe.objects.filter(user=user)
+    else:
+        raise Exception("Invalid clothing type")
+
+    return clothing
+
 # Return correct form given clothing type
-def get_form(request, clothing_type):
+def _get_form(request, clothing_type):
     if clothing_type == "top":
         form = forms.TopClothingForm(request.POST)
     elif clothing_type == "bottom":
@@ -66,7 +123,7 @@ def get_form(request, clothing_type):
     return form
 
 # Return correct clothing object given clothing type and pk number
-def get_clothing_obj(clothing_type, pk):
+def _get_clothing_obj(clothing_type, pk):
     if clothing_type == "top":
         obj = models.TopClothing.objects.get(id=pk)
     elif clothing_type == "bottom":
@@ -78,3 +135,71 @@ def get_clothing_obj(clothing_type, pk):
         return None
 
     return obj
+
+# Returns a list of top/bottom/shoes that create a suitable outfit. Returns list as one outfit can have multiple of the same clothign type.
+# Algorithm currently chooses random first clothing. Then chooses clothing with either complementary colours or neturals from there. Current
+# implementation will only have max 2 colours + any number of NEUTRALS for simplicity.
+def _select_outfit(user):
+    selected_top = []
+    selected_bottom = []
+    selected_shoes = []
+    type_map = {"top": [models.TopClothing, selected_top],
+                "bottom": [models.BottomClothing, selected_bottom],
+                "shoes": [models.Shoe, selected_shoes],
+                }
+
+    # # select first category to start with and remove that from the remaining categories
+    remaining_categories = ["top", "bottom", "shoes"]
+    selected_category = random.choice(remaining_categories)
+    remaining_categories.remove(selected_category)
+
+    #  choice random piece of clothing from that category and add that to the appropriate selected list
+    clothing = type_map[selected_category][0].objects.filter(user=user)
+    selected_clothing = random.choice(clothing)
+    print(selected_clothing)
+    type_map[selected_category][1].append(selected_clothing)
+    main_colour = selected_clothing.colour
+
+    # select second category and clothing on already selected clothing
+    selected_category = random.choice(remaining_categories)
+    remaining_categories.remove(selected_category)
+    selected_clothing = _select_clothing(user, main_colour, selected_category, type_map)
+    type_map[selected_category][1].append(selected_clothing)
+
+    print(selected_clothing)
+    if selected_clothing is None:
+        return None
+
+    if selected_clothing.colour not in NEUTRALS:
+        main_colour = selected_clothing.colour
+
+    # select third clothing based on already selected clothing
+    selected_category = random.choice(remaining_categories)
+    remaining_categories.remove(selected_category)
+    selected_clothing = _select_clothing(user, main_colour, selected_category, type_map)
+
+    print(selected_clothing)
+    if selected_clothing is None:
+        return None
+
+    if selected_clothing.colour not in NEUTRALS:
+        main_colour = selected_clothing.colour
+
+    type_map[selected_category][1].append(selected_clothing)
+    print (selected_top, selected_bottom, selected_shoes)
+    return (selected_top, selected_bottom, selected_shoes)
+
+def _select_clothing(user, main_colour, selected_category, type_map):
+    if main_colour in COMPLIMENTARY_MAP:
+        comp_colour = COMPLIMENTARY_MAP[main_colour]
+        clothing = type_map[selected_category][0].objects.filter(
+            Q(user=user),
+            Q(colour=comp_colour) | Q(colour=NEUTRALS[0]) | Q(colour=NEUTRALS[1]) | Q(colour=NEUTRALS[2])
+        )
+    else:
+        clothing = type_map[selected_category][0].objects.filter(user=user)
+
+    if not clothing:
+        return None
+
+    return random.choice(clothing)
