@@ -10,7 +10,7 @@ class Clothing(models.Model):
         RED = "#FF0000", "Red",
         REDORRANGE = "#ff5349", "Red-Orange",
         ORANGE = "#FFA500", "Orange",
-        YELLOWORANGE = "#FFAE42", "Yellow-Orange",
+        YELLOWORANGE = "#f5bd1f", "Yellow-Orange",
         YELLOW = "#FFFF00", "Yellow",
         YELLOWGREEN = "#9ACD32", "Yellow-Green",
         GREEN = "#00FF00", "Green",
@@ -26,7 +26,7 @@ class Clothing(models.Model):
         GREY = "#808080", "Grey",
         BROWN = "#964B00", "Brown"
 
-    colour = models.CharField(max_length=15, choices=ColourWheel.choices, default=ColourWheel.RED)
+    colour = models.CharField(max_length=15, default=ColourWheel.RED)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     class Meta:
