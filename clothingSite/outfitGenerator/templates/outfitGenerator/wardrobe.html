@@ -11,7 +11,7 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         {% load static %}
-        <link rel="stylesheet" href="{% static 'outfitGenerator/index.css' %}">
+        <link rel="stylesheet" href="{% static 'outfitGenerator/wardrobe.css' %}">
         <script src="{% static 'outfitGenerator/wardrobe.js' %}" async defer></script>
     </head>
     <body>
@@ -88,15 +88,18 @@
     <form action="{% url 'outfitGenerator:add_clothing' 'top' %}" method="post">
         {% csrf_token %}
         {{ topform }}
-        <input type="submit" value="Add">
+        <div id="top-colour" class="colour-box"></div>
+        <input id="top-submit" type="submit" value="Add">
     </form>
+
 
     <br>
     <h3>Add Bottom Clothing</h3>
     <form action="{% url 'outfitGenerator:add_clothing' 'bottom' %}" method="post">
         {% csrf_token %}
         {{ bottomform }}
-        <input type="submit" value="Add">
+        <div id="bottom-colour" class="colour-box"></div>
+        <input id="bottom-submit" type="submit" value="Add">
     </form>
 
     <br>
@@ -104,7 +107,8 @@
     <form action="{% url 'outfitGenerator:add_clothing' 'shoes' %}" method="post">
         {% csrf_token %}
         {{ shoeform }}
-        <input type="submit" value="Add">
+        <div id="shoes-colour" class="colour-box"></div>
+        <input id="shoes-submit" type="submit" value="Add">
     </form>
     </body>
 </html>

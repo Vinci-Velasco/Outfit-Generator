@@ -7,23 +7,9 @@ import random
 
 from . import models
 from . import forms
+from .colour_wheel import ColourWheel
 
-COMPLIMENTARY_MAP = {
-                  "#FF0000": "#00FF00",
-                  "#ff5349": "#0D98BA",
-                  "#FFA500": "#0000FF",
-                  "#FFAE42": "#8a2be2",
-                  "#FFFF00": "#7F00FF",
-                  "#9ACD32": "#922b3e",
-                  "#00FF00": "#FF0000",
-                  "#0D98BA": "#ff5349",
-                  "#0000FF": "#FFA500",
-                  "#8a2be2": "#FFAE42",
-                  "#7F00FF": "#FFFF00",
-                  "#922b3e": "#9ACD32",
-                  }
-
-NEUTRALS = ["#242526", "#f7f5f0", "#808080", "#964B00"]
+colour_wheel = ColourWheel()
 
 def index(request):
     if not request.user.is_authenticated:
@@ -43,9 +29,9 @@ def wardrobe_view(request):
         "topclothing": top_clothing,
         "bottomclothing": bottom_clothing,
         "shoes": shoes,
-        "topform": forms.TopClothingForm,
-        "bottomform": forms.BottomClothingForm,
-        "shoeform": forms.ShoeForm
+        "topform": forms.TopClothingForm(prefix="top-form"),
+        "bottomform": forms.BottomClothingForm(prefix="bottom-form"),
+        "shoeform": forms.ShoeForm(prefix="shoes-form")
     })
 
 def add_clothing_view(request, clothing_type):
@@ -111,11 +97,11 @@ def _get_all_from_user(clothing_type, user):
 # Return correct form given clothing type
 def _get_form(request, clothing_type):
     if clothing_type == "top":
-        form = forms.TopClothingForm(request.POST)
+        form = forms.TopClothingForm(request.POST, prefix="top-form")
     elif clothing_type == "bottom":
-        form = forms.BottomClothingForm(request.POST)
+        form = forms.BottomClothingForm(request.POST, prefix="bottom-form")
     elif clothing_type == "shoes":
-        form = forms.ShoeForm(request.POST)
+        form = forms.ShoeForm(request.POST, prefix="shoes-form")
     else:
         print("Invalid URL") # potentially add a 404 not found page that is sent back
         return None
@@ -153,8 +139,10 @@ def _select_outfit(user):
     selected_category = random.choice(remaining_categories)
     remaining_categories.remove(selected_category)
 
-    #  choice random piece of clothing from that category and add that to the appropriate selected list
+    #  choose random piece of clothing from that category and add that to the appropriate selected list
     clothing = type_map[selected_category][0].objects.filter(user=user)
+    if not clothing:
+        return None
     selected_clothing = random.choice(clothing)
     print(selected_clothing)
     type_map[selected_category][1].append(selected_clothing)
@@ -170,7 +158,7 @@ def _select_outfit(user):
     if selected_clothing is None:
         return None
 
-    if selected_clothing.colour not in NEUTRALS:
+    if not colour_wheel.is_neutral(selected_clothing.colour):
         main_colour = selected_clothing.colour
 
     # select third clothing based on already selected clothing
@@ -182,7 +170,7 @@ def _select_outfit(user):
     if selected_clothing is None:
         return None
 
-    if selected_clothing.colour not in NEUTRALS:
+    if not colour_wheel.is_neutral(selected_clothing.colour):
         main_colour = selected_clothing.colour
 
     type_map[selected_category][1].append(selected_clothing)
@@ -190,13 +178,33 @@ def _select_outfit(user):
     return (selected_top, selected_bottom, selected_shoes)
 
 def _select_clothing(user, main_colour, selected_category, type_map):
-    if main_colour in COMPLIMENTARY_MAP:
-        comp_colour = COMPLIMENTARY_MAP[main_colour]
-        clothing = type_map[selected_category][0].objects.filter(
-            Q(user=user),
-            Q(colour=comp_colour) | Q(colour=NEUTRALS[0]) | Q(colour=NEUTRALS[1]) | Q(colour=NEUTRALS[2])
-        )
+    if not colour_wheel.is_neutral(main_colour):
+        comp_colours = colour_wheel.get_comp_colours(main_colour)
+
+        if comp_colours is None:
+
+            return None
+
+        # turn complimentary colours and neutrals values into Q objects
+        q_objects = [Q(colour=_colour) for _colour in comp_colours]
+        for neutral in colour_wheel.get_black():
+            q_objects.append(Q(colour=neutral))
+        for neutral in colour_wheel.get_white():
+            q_objects.append(Q(colour=neutral))
+        for neutral in colour_wheel.get_grey():
+            q_objects.append(Q(colour=neutral))
+        for neutral in colour_wheel.get_brown():
+            q_objects.append(Q(colour=neutral))
+
+        # OR them into a combined Q object that will query the DB
+        combined_colour_q = Q()
+        for q in q_objects:
+            combined_colour_q |= q
+
+        # get clothign that are complimentary or neutral
+        clothing = type_map[selected_category][0].objects.filter(combined_colour_q)
     else:
+        # main colour is neutral, so any clothing colour is fine
         clothing = type_map[selected_category][0].objects.filter(user=user)
 
     if not clothing:

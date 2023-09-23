@@ -1,11 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MaxValueValidator
+
 
 class Clothing(models.Model):
 
     # Each clothing item will have a colour option derived from the colour wheel.
-    # Later on, change this to incorporate colour using hexadecimal values and convert into colour
-    # wheel options
     class ColourWheel(models.TextChoices):
         RED = "#FF0000", "Red",
         REDORRANGE = "#ff5349", "Red-Orange",
@@ -26,7 +26,9 @@ class Clothing(models.Model):
         GREY = "#808080", "Grey",
         BROWN = "#964B00", "Brown"
 
-    colour = models.CharField(max_length=15, default=ColourWheel.RED)
+    colour = models.CharField(max_length=17, default=ColourWheel.RED, choices=ColourWheel.choices)
+    tint_or_shade = models.PositiveIntegerField(default=100, validators=[MaxValueValidator(200)])
+    saturation = models.PositiveIntegerField(default=100, validators=[MaxValueValidator(100)])
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     class Meta:
