@@ -8,21 +8,21 @@ class Clothing(models.Model):
     # Each clothing item will have a colour option derived from the colour wheel.
     class ColourWheel(models.TextChoices):
         RED = "#FF0000", "Red",
-        REDORRANGE = "#ff5349", "Red-Orange",
+        REDORRANGE = "#FF5349", "Red-Orange",
         ORANGE = "#FFA500", "Orange",
-        YELLOWORANGE = "#f5bd1f", "Yellow-Orange",
+        YELLOWORANGE = "#F5BD1F", "Yellow-Orange",
         YELLOW = "#FFFF00", "Yellow",
         YELLOWGREEN = "#9ACD32", "Yellow-Green",
         GREEN = "#00FF00", "Green",
         BLUEGREEN = "#0D98BA", "Blue-Green",
         BLUE = "#0000FF", "Blue",
-        BLUEVIOLET = "#8a2be2", "Blue-Violet",
+        BLUEVIOLET = "#8A2BE2", "Blue-Violet",
         VIOLET = "#7F00FF", "Violet",
-        REDVIOLET = "#922b3e", "Red-Violet",
+        REDVIOLET = "#922B3E", "Red-Violet",
 
         # NEUTRALS
         BLACK = "#242526", "Black", # slight off-black to distinguish black border lines of clothing
-        WHITE = "#f7f5f0", "White", # slight off-white to distinguish black border lines of clothing
+        WHITE = "#F7F5F0", "White", # slight off-white to distinguish black border lines of clothing
         GREY = "#808080", "Grey",
         BROWN = "#964B00", "Brown"
 
