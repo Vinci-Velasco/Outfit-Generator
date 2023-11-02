@@ -1,12 +1,18 @@
+/**
+ * Adds tint or shade to hex colour string
+ * @param {string} colour The hex colour
+ * @param {integer} value The tint/shade value (from 0 - 200 inclusive)
+ * @returns tinted/shaded hex colour (as string)
+ */
 function getTintedOrShadedColour(colour, value) {
     if (value === 100) {
         return colour;
     }
 
+    // convert hex to decimal RGB
     const redHex = colour.slice(1, 3);
     const blueHex = colour.slice(3, 5);
     const greenHex = colour.slice(5);
-
     const redDecimal = parseInt(redHex, 16);
     const blueDecimal = parseInt(blueHex, 16);
     const greenDecimal = parseInt(greenHex, 16);
@@ -16,12 +22,16 @@ function getTintedOrShadedColour(colour, value) {
     let newGreenDecimal;
     let newColour;
 
+    // get new decimal RGB by applying tint
     if (value > 100) {
         const tint_value = (value - 100) / 100;
         newRedDecimal = applyTint(redDecimal, tint_value);
         newBlueDecimal = applyTint(blueDecimal, tint_value);
         newGreenDecimal = applyTint(greenDecimal, tint_value);
+        console.log(newRedDecimal);
     }
+
+    // get new decimal RGB by applying shade
     else {
         const shade_value = value / 100;
         newRedDecimal = applyShade(redDecimal, shade_value);
@@ -29,20 +39,22 @@ function getTintedOrShadedColour(colour, value) {
         newGreenDecimal = applyShade(greenDecimal, shade_value);
     }
 
+    // convert back to hex
     let newRedHex = newRedDecimal.toString(16);
     let newBlueHex = newBlueDecimal.toString(16);
     let newGreenHex = newGreenDecimal.toString(16);
 
-    if (newRedHex === "0") {
-        newRedHex += "0";
+    // each hex value should have 2 digits, so prepend a 0 if needed
+    if (newRedHex.length == 1) {
+        newRedHex = "0" + newRedHex;
     }
 
-    if (newBlueHex === "0") {
-        newBlueHex += "0";
+    if (newBlueHex.length == 1) {
+        newBlueHex = "0" + newBlueHex;
     }
 
-    if (newGreenHex === "0") {
-        newGreenHex += "0";
+    if (newGreenHex.length == 1) {
+        newGreenHex = "0" + newGreenHex;
     }
 
     newColour = `#${newRedHex}${newBlueHex}${newGreenHex}`;
@@ -58,8 +70,8 @@ function applyShade(colourValue, shadeValue) {
 }
 
 function changeColourBox(formID, colourBoxID) {
-    const topColourMenu = document.getElementById(`${formID}-colour`);
-    const colour = topColourMenu.value;
+    const colourMenu = document.getElementById(`${formID}-colour`);
+    const colour = colourMenu.value;
 
     const tintOrShadeMenu = document.getElementById(`${formID}-tint_or_shade`);
     const tintOrShade = tintOrShadeMenu.value;

@@ -1,4 +1,3 @@
-import random
 
 class ColourWheel():
     def __init__(self) -> None:
