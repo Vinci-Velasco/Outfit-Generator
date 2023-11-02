@@ -17,3 +17,4 @@ Currently, colour is the only factor accounted for in the algorithm. The generat
 2. Update the UI to look more modern
 3. Have the generate outfit algorithm account for the weather using a weather API(precipitation, temperature, etc)
 4. Have the generate outfit algorithm account for formality and differences in fabric
+5. Implement a page that allows users to generate their outfits for an entire week
