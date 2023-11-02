@@ -4,12 +4,18 @@ from django.urls import reverse
 from django.db.models import Q
 
 import random
+from enum import Enum
 
 from . import models
 from . import forms
 from .colour_wheel import ColourWheel
 
 colour_wheel = ColourWheel()
+
+class FilterColour(Enum):
+    NEUTRAL_OR_COMP = 1
+    NEUTRAL_ONLY = 2
+    ANY_COLOUR = 3
 
 def index(request):
     if not request.user.is_authenticated:
@@ -123,88 +129,93 @@ def _get_clothing_obj(clothing_type, pk):
     return obj
 
 # Returns a list of top/bottom/shoes that create a suitable outfit. Returns list as one outfit can have multiple of the same clothing type.
-# Algorithm currently chooses random first clothing. Then chooses clothing with either complementary colours or neturals from there. Current
-# implementation will only have max 2 colours + any number of NEUTRALS for simplicity.
+# Algo for now ONLY focus on colour and creates an outfit that deals with either neutrals, and or complimentary colours
+# Valid colour combos (top-bottom-shoes):
+# neutral-neutral-neutral, neutral-colour-neutral, colour-neutral-neutral, neutral-neutral-colour,
+# colour-neutral-comp_colour, colour-comp_colour-neutral
 def _select_outfit(user):
     selected_top = []
     selected_bottom = []
     selected_shoes = []
-    type_map = {"top": [models.TopClothing, selected_top],
-                "bottom": [models.BottomClothing, selected_bottom],
-                "shoes": [models.Shoe, selected_shoes],
-                }
 
-    # # select first category to start with and remove that from the remaining categories
-    remaining_categories = ["top", "bottom", "shoes"]
-    selected_category = random.choice(remaining_categories)
-    remaining_categories.remove(selected_category)
-
-    #  choose random piece of clothing from that category and add that to the appropriate selected list
-    clothing = type_map[selected_category][0].objects.filter(user=user)
-    if not clothing:
-        return None
-    selected_clothing = random.choice(clothing)
-    print(selected_clothing)
-    type_map[selected_category][1].append(selected_clothing)
-    main_colour = selected_clothing.colour
-
-    # select second category and clothing on already selected clothing
-    selected_category = random.choice(remaining_categories)
-    remaining_categories.remove(selected_category)
-    selected_clothing = _select_clothing(user, main_colour, selected_category, type_map)
-    type_map[selected_category][1].append(selected_clothing)
-
-    print(selected_clothing)
-    if selected_clothing is None:
+    # choose random top clothing first
+    top_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.TopClothing)
+    if not top_clothing:
         return None
 
-    if not colour_wheel.is_neutral(selected_clothing.colour):
-        main_colour = selected_clothing.colour
+    selected_top.append(top_clothing)
+    top_colour = top_clothing.colour
 
-    # select third clothing based on already selected clothing
-    selected_category = random.choice(remaining_categories)
-    remaining_categories.remove(selected_category)
-    selected_clothing = _select_clothing(user, main_colour, selected_category, type_map)
+    # select bottom that is either neutral or complimentary to chosen top
+    if colour_wheel.is_neutral(top_colour):
+        bottom_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.BottomClothing)
+    else:
+        bottom_clothing = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.BottomClothing, top_colour)
 
-    print(selected_clothing)
-    if selected_clothing is None:
+    if bottom_clothing is None:
         return None
 
-    if not colour_wheel.is_neutral(selected_clothing.colour):
-        main_colour = selected_clothing.colour
+    selected_bottom.append(bottom_clothing)
 
-    type_map[selected_category][1].append(selected_clothing)
+    # select shoes clothing based on already selected clothing
+    # top is coloured, bottom is neutral
+    if not colour_wheel.is_neutral(top_colour) and colour_wheel.is_neutral(bottom_clothing):
+        # grab neutral or comp colour
+        shoes = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.Shoe, top_colour)
+
+    # top is neutral, bottom is coloured
+    elif colour_wheel.is_neutral(top_colour) and not colour_wheel.is_neutral(bottom_clothing):
+        # grab neutral only
+        shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
+
+    # both coloured
+    elif not colour_wheel.is_neutral(top_colour) and not colour_wheel.is_neutral(bottom_clothing):
+        # grab neutral only
+        shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
+
+    # both neutral
+    else:
+        # grab any colour
+        shoes = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.Shoe)
+
+    if shoes is None:
+        return None
+
+    selected_shoes.append(shoes)
+
     print (selected_top, selected_bottom, selected_shoes)
     return (selected_top, selected_bottom, selected_shoes)
 
-def _select_clothing(user, main_colour, selected_category, type_map):
-    if not colour_wheel.is_neutral(main_colour):
-        comp_colours = colour_wheel.get_comp_colours(main_colour)
-
-        if comp_colours is None:
+def _select_clothing(user, choice, type, colour=None):
+    if choice == FilterColour.NEUTRAL_OR_COMP.value:
+        comp_colour = colour_wheel.get_comp_hex_colour(colour)
+        if comp_colour is None:
             return None
 
-        # turn complimentary colours and neutrals values into Q objects
-        q_objects = [Q(colour=_colour) for _colour in comp_colours]
-        for neutral in colour_wheel.get_black():
-            q_objects.append(Q(colour=neutral))
-        for neutral in colour_wheel.get_white():
-            q_objects.append(Q(colour=neutral))
-        for neutral in colour_wheel.get_grey():
-            q_objects.append(Q(colour=neutral))
-        for neutral in colour_wheel.get_brown():
-            q_objects.append(Q(colour=neutral))
-
-        # OR them into a combined Q object that will query the DB
-        combined_colour_q = Q()
-        for q in q_objects:
-            combined_colour_q |= q
-
         # get clothing that are complimentary or neutral
-        clothing = type_map[selected_category][0].objects.filter(combined_colour_q)
+        clothing = type.objects.filter(
+            Q(user=user),
+            Q(colour=comp_colour, saturation__lte=50)
+            | Q(colour=colour_wheel.get_neutral("Black"))
+            | Q(colour=colour_wheel.get_neutral("White"))
+            | Q(colour=colour_wheel.get_neutral("Grey"))
+            | Q(colour=colour_wheel.get_neutral("Brown"))
+            )
+
+    elif choice == FilterColour.NEUTRAL_ONLY.value:
+        clothing = type.objects.filter(
+            Q(user=user),
+            Q(colour=colour_wheel.get_neutral("Black"))
+            | Q(colour=colour_wheel.get_neutral("White"))
+            | Q(colour=colour_wheel.get_neutral("Grey"))
+            | Q(colour=colour_wheel.get_neutral("Brown"))
+            )
+
+    elif choice == FilterColour.ANY_COLOUR.value:
+        clothing = type.objects.filter(user=user)
+
     else:
-        # main colour is neutral, so any clothing colour is fine
-        clothing = type_map[selected_category][0].objects.filter(user=user)
+        return None
 
     if not clothing:
         return None
