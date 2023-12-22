@@ -1,5 +1,18 @@
+import random
+from enum import Enum
 
-class ColourWheel():
+class OutfitColourModes(Enum):
+    COMPLIMENTARY = 0
+    SEMI_NEUTRAL = 1
+    FULL_NEUTRAL = 2
+
+class FilterColour(Enum):
+    NEUTRAL = 0
+    NON_NEUTRAL = 1
+    COMPLIMENTARY = 2
+
+
+class ColourOptions():
     def __init__(self) -> None:
         self._colour_wheel = {"Red": "#FF0000",
                         "Red-Orange": "#FF5349",
@@ -36,6 +49,12 @@ class ColourWheel():
                           "Brown": "#964B00"
                           }
 
+        self._colour_modes = [
+            OutfitColourModes.COMPLIMENTARY,
+            OutfitColourModes.SEMI_NEUTRAL,
+            OutfitColourModes.FULL_NEUTRAL
+            ]
+
 
     def get_comp_hex_colour(self, colour_in_hex):
         for key, value in self._colour_wheel.items():
@@ -52,3 +71,7 @@ class ColourWheel():
             return self._neutrals[colour_name]
         except KeyError:
             return None
+
+    def get_outfit_colour_mode(self):
+        #TODO: CHANGE WEIGHTS! THIS IS JUST FOR TESTING
+        return random.choices(self._colour_modes, weights=(10, 0, 0), k=1).value

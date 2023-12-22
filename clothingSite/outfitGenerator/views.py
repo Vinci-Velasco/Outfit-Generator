@@ -4,18 +4,12 @@ from django.urls import reverse
 from django.db.models import Q
 
 import random
-from enum import Enum
 
 from . import models
 from . import forms
-from .colour_wheel import ColourWheel
+from .colour_options import ColourOptions, OutfitColourModes
 
-colour_wheel = ColourWheel()
-
-class FilterColour(Enum):
-    NEUTRAL_OR_COMP = 1
-    NEUTRAL_ONLY = 2
-    ANY_COLOUR = 3
+colour_options = ColourOptions()
 
 def index(request):
     if not request.user.is_authenticated:
@@ -133,91 +127,172 @@ def _get_clothing_obj(clothing_type, pk):
 # Valid colour combos (top-bottom-shoes):
 # neutral-neutral-neutral, neutral-colour-neutral, colour-neutral-neutral, neutral-neutral-colour,
 # colour-neutral-comp_colour, colour-comp_colour-neutral
+
+# def _select_outfit(user):
+#     selected_top = []
+#     selected_bottom = []
+#     selected_shoes = []
+
+#     # choose random top clothing first
+#     top_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.TopClothing)
+#     if not top_clothing:
+#         return None
+
+#     selected_top.append(top_clothing)
+#     top_colour = top_clothing.colour
+
+#     # select bottom that is either neutral or complimentary to chosen top
+#     if colour_options.is_neutral(top_colour):
+#         bottom_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.BottomClothing)
+#     else:
+#         bottom_clothing = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.BottomClothing, top_colour)
+
+#     if bottom_clothing is None:
+#         return None
+
+#     selected_bottom.append(bottom_clothing)
+
+#     # select shoes clothing based on already selected clothing
+#     # top is coloured, bottom is neutral
+#     if not colour_options.is_neutral(top_colour) and colour_options.is_neutral(bottom_clothing):
+#         # grab neutral or comp colour
+#         shoes = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.Shoe, top_colour)
+
+#     # top is neutral, bottom is coloured
+#     elif colour_options.is_neutral(top_colour) and not colour_options.is_neutral(bottom_clothing):
+#         # grab neutral only
+#         shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
+
+#     # both coloured
+#     elif not colour_options.is_neutral(top_colour) and not colour_options.is_neutral(bottom_clothing):
+#         # grab neutral only
+#         shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
+
+#     # both neutral
+#     else:
+#         # grab any colour
+#         shoes = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.Shoe)
+
+#     if shoes is None:
+#         return None
+
+#     selected_shoes.append(shoes)
+
+#     print(selected_top, selected_bottom, selected_shoes)
+#     return (selected_top, selected_bottom, selected_shoes)
+
 def _select_outfit(user):
-    selected_top = []
-    selected_bottom = []
-    selected_shoes = []
+    valid_top = []
+    valid_bottom = []
+    valid_shoes = []
+    selected_outfit = []
 
-    # choose random top clothing first
-    top_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.TopClothing)
-    if not top_clothing:
-        return None
+    colour_mode = colour_options.get_outfit_colour_mode()
 
-    selected_top.append(top_clothing)
-    top_colour = top_clothing.colour
+    if colour_mode == OutfitColourModes.COMPLIMENTARY.value:
+        valid_top = _get_clothing_complimentary(user, models.TopClothing)
+        valid_bottom = _get_clothing_complimentary(user, models.TopClothing)
+        valid_shoes = _get_clothing_complimentary(user, models.TopClothing)
 
-    # select bottom that is either neutral or complimentary to chosen top
-    if colour_wheel.is_neutral(top_colour):
-        bottom_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.BottomClothing)
+    elif colour_mode == OutfitColourModes.SEMI_NEUTRAL.value:
+        pass
+
+    elif colour_mode == OutfitColourModes.FULL_NEUTRAL.value:
+        pass
+
     else:
-        bottom_clothing = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.BottomClothing, top_colour)
+        pass
 
-    if bottom_clothing is None:
-        return None
+    selected_outfit.append(random.choice(valid_top))
+    selected_outfit.append(random.choice(valid_bottom))
+    selected_outfit.append(random.choice(valid_shoes))
+    return selected_outfit
 
-    selected_bottom.append(bottom_clothing)
-
-    # select shoes clothing based on already selected clothing
-    # top is coloured, bottom is neutral
-    if not colour_wheel.is_neutral(top_colour) and colour_wheel.is_neutral(bottom_clothing):
-        # grab neutral or comp colour
-        shoes = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.Shoe, top_colour)
-
-    # top is neutral, bottom is coloured
-    elif colour_wheel.is_neutral(top_colour) and not colour_wheel.is_neutral(bottom_clothing):
-        # grab neutral only
-        shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
-
-    # both coloured
-    elif not colour_wheel.is_neutral(top_colour) and not colour_wheel.is_neutral(bottom_clothing):
-        # grab neutral only
-        shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
-
-    # both neutral
+def _get_clothing_complimentary(user, type, previous_clothing=None):
+    if previous_clothing is None:
+        comp_clothing = _get_coloured_clothing(user, type)
     else:
-        # grab any colour
-        shoes = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.Shoe)
+        comp_clothing = None
 
-    if shoes is None:
-        return None
+    return comp_clothing
 
-    selected_shoes.append(shoes)
+# Returns a list of clothing from the specified clothing type, any non-neutral colour by default or None
+# if items cannot be found
+# neutral - can be TRUE or FALSE. If TRUE, func will return a list of neutral coloured clothing or None
+# colours - a list of possible colours to choose from, NONE by default. If neutral is NOT None,
+#           this param will not effect anything.
+# max_saturation - int that specifies max saturation of selected clothings (100 default)
+def _get_coloured_clothing(user, type, neutral=False, colours=None, max_saturation=100):
+    if neutral:
+        clothing = type.objects.filter(
+            Q(user=user),
+            Q(saturation__lte=max_saturation),
+            Q(colour=colour_options.get_neutral("Black"))
+            | Q(colour=colour_options.get_neutral("White"))
+            | Q(colour=colour_options.get_neutral("Grey"))
+            | Q(colour=colour_options.get_neutral("Brown"))
+        )
 
-    print (selected_top, selected_bottom, selected_shoes)
-    return (selected_top, selected_bottom, selected_shoes)
+    else:
+        # try to find clothing that are one of these colours
+        if colours is not None:
+            clothing = type.objects.filter(
+                Q(user=user),
+                Q(saturation__lte=max_saturation),
+                Q(colour__in=colours)
+            )
 
-def _select_clothing(user, choice, type, colour=None):
-    if choice == FilterColour.NEUTRAL_OR_COMP.value:
-        comp_colour = colour_wheel.get_comp_hex_colour(colour)
-        if comp_colour is None:
+        # try to find non-neutral coloured clothing
+        else:
+            clothing = type.objects.filter(
+                Q(user=user),
+                Q(saturation__lte=max_saturation),
+                ~Q(colour=colour_options.get_neutral("Black"))
+                | ~Q(colour=colour_options.get_neutral("White"))
+                | ~Q(colour=colour_options.get_neutral("Grey"))
+                | ~Q(colour=colour_options.get_neutral("Brown"))
+            )
+
+    if clothing is not None:
+        if len(clothing) == 0:
             return None
 
-        # get clothing that are complimentary or neutral
-        clothing = type.objects.filter(
-            Q(user=user),
-            Q(colour=comp_colour, saturation__lte=50)
-            | Q(colour=colour_wheel.get_neutral("Black"))
-            | Q(colour=colour_wheel.get_neutral("White"))
-            | Q(colour=colour_wheel.get_neutral("Grey"))
-            | Q(colour=colour_wheel.get_neutral("Brown"))
-            )
+    return clothing
 
-    elif choice == FilterColour.NEUTRAL_ONLY.value:
-        clothing = type.objects.filter(
-            Q(user=user),
-            Q(colour=colour_wheel.get_neutral("Black"))
-            | Q(colour=colour_wheel.get_neutral("White"))
-            | Q(colour=colour_wheel.get_neutral("Grey"))
-            | Q(colour=colour_wheel.get_neutral("Brown"))
-            )
 
-    elif choice == FilterColour.ANY_COLOUR.value:
-        clothing = type.objects.filter(user=user)
+# def _select_clothing(user, choice, type, colour=None):
+#     if choice == FilterColour.NEUTRAL_OR_COMP.value:
+#         comp_colour = colour_options.get_comp_hex_colour(colour)
+#         if comp_colour is None:
+#             return None
 
-    else:
-        return None
+#         # get clothing that are complimentary or neutral
+#         clothing = type.objects.filter(
+#             Q(user=user),
+#             Q(colour=comp_colour, saturation__lte=50) # complilmenary colour should have low-ish saturation
+#             | Q(colour=colour_options.get_neutral("Black"))
+#             | Q(colour=colour_options.get_neutral("White"))
+#             | Q(colour=colour_options.get_neutral("Grey"))
+#             | Q(colour=colour_options.get_neutral("Brown"))
+#             )
 
-    if not clothing:
-        return None
+#     elif choice == FilterColour.NEUTRAL_ONLY.value:
+#         clothing = type.objects.filter(
+#             Q(user=user),
+#             Q(colour=colour_options.get_neutral("Black"))
+#             | Q(colour=colour_options.get_neutral("White"))
+#             | Q(colour=colour_options.get_neutral("Grey"))
+#             | Q(colour=colour_options.get_neutral("Brown"))
+#             )
 
-    return random.choice(clothing)
+#     elif choice == FilterColour.ANY_COLOUR.value:
+#         clothing = type.objects.filter(user=user)
+
+#     else:
+#         return None
+
+#     if not clothing:
+#         return None
+
+#     # return random to avoid the same clothing being used all the time
+#     return random.choice(clothing)
