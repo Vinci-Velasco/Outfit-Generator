@@ -4,17 +4,12 @@ from enum import Enum
 class OutfitColourModes(Enum):
     COMPLIMENTARY = 0
     SEMI_NEUTRAL = 1
-    FULL_NEUTRAL = 2
-
-class FilterColour(Enum):
-    NEUTRAL = 0
-    NON_NEUTRAL = 1
-    COMPLIMENTARY = 2
+    MONOCHROMATIC =3
 
 
 class ColourOptions():
     def __init__(self) -> None:
-        self._colour_wheel = {"Red": "#FF0000",
+        self.colour_wheel = {"Red": "#FF0000",
                         "Red-Orange": "#FF5349",
                         "Orange": "#FFA500",
                         "Yellow-Orange": "#F5BD1F",
@@ -43,35 +38,36 @@ class ColourOptions():
                         "Red-Violet": "Yellow-Green",
                         }
 
-        self._neutrals = {"Black": "#242526",
+        self.neutrals = {"Black": "#242526",
                           "White": "#F7F5F0",
-                          "Grey": "#808080",
                           "Brown": "#964B00"
                           }
 
-        self._colour_modes = [
-            OutfitColourModes.COMPLIMENTARY,
-            OutfitColourModes.SEMI_NEUTRAL,
-            OutfitColourModes.FULL_NEUTRAL
-            ]
+        self.colour_modes = {
+            OutfitColourModes.COMPLIMENTARY : 1,
+            OutfitColourModes.SEMI_NEUTRAL : 2,
+            OutfitColourModes.MONOCHROMATIC : 1
+        }
 
 
     def get_comp_hex_colour(self, colour_in_hex):
-        for key, value in self._colour_wheel.items():
+        for key, value in self.colour_wheel.items():
             if colour_in_hex.upper() == value:
-                return self._colour_wheel[self._comp_map[key]]
+                return self.colour_wheel[self._comp_map[key]]
 
         return None
 
+    def get_rand_colour(self):
+        return random.choice(list(self.colour_wheel.keys()))
+
+    def get_rand_neutral_colour(self):
+        return random.choice(list(self.neutrals.values()))
+
     def is_neutral(self, colour_in_hex):
-        return colour_in_hex in list(self._neutrals.values())
+        return colour_in_hex in list(self.neutrals.values())
 
     def get_neutral(self, colour_name):
         try:
-            return self._neutrals[colour_name]
+            return self.neutrals[colour_name]
         except KeyError:
             return None
-
-    def get_outfit_colour_mode(self):
-        #TODO: CHANGE WEIGHTS! THIS IS JUST FOR TESTING
-        return random.choices(self._colour_modes, weights=(10, 0, 0), k=1).value

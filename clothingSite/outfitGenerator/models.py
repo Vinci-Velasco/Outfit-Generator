@@ -23,7 +23,7 @@ class Clothing(models.Model):
         # NEUTRALS
         BLACK = "#242526", "Black", # slight off-black to distinguish black border lines of clothing
         WHITE = "#F7F5F0", "White", # slight off-white to distinguish black border lines of clothing
-        GREY = "#808080", "Grey",
+        # GREY = "#808080", "Grey",
         BROWN = "#964B00", "Brown"
 
     colour = models.CharField(max_length=17, default=ColourWheel.RED, choices=ColourWheel.choices)

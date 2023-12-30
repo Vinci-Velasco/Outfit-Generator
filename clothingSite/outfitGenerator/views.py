@@ -2,6 +2,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.db.models import Q
+from copy import copy
 
 import random
 
@@ -58,6 +59,7 @@ def generate_outfit_view(request):
 
     if request.method == "POST":
         clothing = _select_outfit(request.user)
+        print(clothing)
         if clothing is None:
             error_msg = "Could not find matching clothes (no matching colours or missing clothing in category)"
             return render(request, "outfitGenerator/generate_outfit.html", {
@@ -122,111 +124,216 @@ def _get_clothing_obj(clothing_type, pk):
 
     return obj
 
-# Returns a list of top/bottom/shoes that create a suitable outfit. Returns list as one outfit can have multiple of the same clothing type.
-# Algo for now ONLY focus on colour and creates an outfit that deals with either neutrals, and or complimentary colours
-# Valid colour combos (top-bottom-shoes):
-# neutral-neutral-neutral, neutral-colour-neutral, colour-neutral-neutral, neutral-neutral-colour,
-# colour-neutral-comp_colour, colour-comp_colour-neutral
-
-# def _select_outfit(user):
-#     selected_top = []
-#     selected_bottom = []
-#     selected_shoes = []
-
-#     # choose random top clothing first
-#     top_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.TopClothing)
-#     if not top_clothing:
-#         return None
-
-#     selected_top.append(top_clothing)
-#     top_colour = top_clothing.colour
-
-#     # select bottom that is either neutral or complimentary to chosen top
-#     if colour_options.is_neutral(top_colour):
-#         bottom_clothing = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.BottomClothing)
-#     else:
-#         bottom_clothing = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.BottomClothing, top_colour)
-
-#     if bottom_clothing is None:
-#         return None
-
-#     selected_bottom.append(bottom_clothing)
-
-#     # select shoes clothing based on already selected clothing
-#     # top is coloured, bottom is neutral
-#     if not colour_options.is_neutral(top_colour) and colour_options.is_neutral(bottom_clothing):
-#         # grab neutral or comp colour
-#         shoes = _select_clothing(user, FilterColour.NEUTRAL_OR_COMP.value, models.Shoe, top_colour)
-
-#     # top is neutral, bottom is coloured
-#     elif colour_options.is_neutral(top_colour) and not colour_options.is_neutral(bottom_clothing):
-#         # grab neutral only
-#         shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
-
-#     # both coloured
-#     elif not colour_options.is_neutral(top_colour) and not colour_options.is_neutral(bottom_clothing):
-#         # grab neutral only
-#         shoes = _select_clothing(user, FilterColour.NEUTRAL_ONLY.value, models.Shoe)
-
-#     # both neutral
-#     else:
-#         # grab any colour
-#         shoes = _select_clothing(user, FilterColour.ANY_COLOUR.value, models.Shoe)
-
-#     if shoes is None:
-#         return None
-
-#     selected_shoes.append(shoes)
-
-#     print(selected_top, selected_bottom, selected_shoes)
-#     return (selected_top, selected_bottom, selected_shoes)
-
+# Returns a valid outfit tuple (top, bottom, shoes), taking account of: colour mode (complimentary, mono, neutral, semi-neutral).
+# Algorithm chooses inital paramters (colour mode, main colour) and finds valid outfits that fit the params. A random valid one will be chosen
+# and returned. Algorithm is exhaustive, i.e if no valid outfit is found, it use diff colours, and change colour modes to find a valid outfit.
+# In the future, will consider formality, weather, and potentially more.
 def _select_outfit(user):
     valid_top = []
     valid_bottom = []
     valid_shoes = []
-    selected_outfit = []
 
-    colour_mode = colour_options.get_outfit_colour_mode()
+    colour_modes = copy(colour_options.colour_modes)
 
-    if colour_mode == OutfitColourModes.COMPLIMENTARY.value:
-        valid_top = _get_clothing_complimentary(user, models.TopClothing)
-        valid_bottom = _get_clothing_complimentary(user, models.TopClothing)
-        valid_shoes = _get_clothing_complimentary(user, models.TopClothing)
+    # loop to go through all colour modes if necessary
+    while len(colour_modes) > 0:
 
-    elif colour_mode == OutfitColourModes.SEMI_NEUTRAL.value:
-        pass
+        # choose inital colour mode, and set usable colours (each colour will be removed if no valid outfits found)
+        colour_mode = random.choices(list(colour_modes.keys()), weights=tuple(colour_modes.values()))[0]
+        print(colour_mode)
+        usable_colours =  copy(colour_options.colour_wheel)
 
-    elif colour_mode == OutfitColourModes.FULL_NEUTRAL.value:
-        pass
+        # loop through all colours if necessary
+        while len(usable_colours) > 0:
 
+            # choose a main colour for the outfit
+            main_colour = random.choices(list(usable_colours.keys()))[0]
+            main_colour_hex = colour_options.colour_wheel[main_colour]
+
+            # select valid tops, bottoms, shoes based on colour mode
+            if colour_mode.value == OutfitColourModes.COMPLIMENTARY.value:
+                res = _select_comp_clothing(user, usable_colours, main_colour, main_colour_hex)
+                if res is None:
+
+                    continue
+                valid_top, valid_bottom, valid_shoes = res
+
+            elif colour_mode.value == OutfitColourModes.MONOCHROMATIC.value:
+                usable_neutrals = copy(colour_options.neutrals)
+                main_colour = random.choices(list(usable_colours.keys()) + list(usable_neutrals.keys()))[0]
+                res = _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex)
+                if res is None:
+                    continue
+                valid_top, valid_bottom, valid_shoes = res
+
+            elif colour_mode.value == OutfitColourModes.SEMI_NEUTRAL.value:
+                res = _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour_hex)
+                if res is None:
+                    continue
+                valid_top, valid_bottom, valid_shoes = res
+
+            # should never happen
+            else:
+                return None
+
+            # do more filtering on valid lists based on formality, weather, etc. here
+            # ...
+
+            return ([random.choice(valid_top)], [random.choice(valid_bottom)], [random.choice(valid_shoes)])
+
+        del colour_modes[colour_mode]
+
+    return None
+
+# Returns valid_top, valid_bottom, valid_shoes that are colour complimentary to each other, None otherwise.
+# With (top, bottom, shoes) returns either -> (main_colour, neutral, comp) or (main_colour, comp, neutral), or None
+def _select_comp_clothing(user, usable_colours, main_colour, main_colour_hex):
+    valid_top = _get_coloured_clothing(user, models.TopClothing, colours=[main_colour_hex])
+    if valid_top is None:
+        usable_colours.pop(main_colour, None) # use a diff colour and try again
+        return None
+
+    comp_colour_hex = colour_options.get_comp_hex_colour(main_colour_hex)
+
+    is_complimentary_bottom = random.choice([True, False])
+    if is_complimentary_bottom:
+        valid_bottom = _get_coloured_clothing(user, models.BottomClothing, colours=[comp_colour_hex])
+        valid_shoes = _get_coloured_clothing(user, models.Shoe, neutral=True)
     else:
-        pass
+        valid_bottom = _get_coloured_clothing(user, models.BottomClothing, neutral=True)
+        valid_shoes = _get_coloured_clothing(user, models.Shoe, colours=[comp_colour_hex])
 
-    selected_outfit.append(random.choice(valid_top))
-    selected_outfit.append(random.choice(valid_bottom))
-    selected_outfit.append(random.choice(valid_shoes))
-    return selected_outfit
+    if valid_bottom is None or valid_shoes is None:
+        # switch bottom/shoes being the complimentary and try again
+        if is_complimentary_bottom:
+            valid_bottom = _get_coloured_clothing(user, models.BottomClothing, neutral=True)
+            valid_shoes = _get_coloured_clothing(user, models.Shoe, colours=[comp_colour_hex])
+        else:
+            valid_bottom = _get_coloured_clothing(user, models.BottomClothing, colours=[comp_colour_hex])
+            valid_shoes = _get_coloured_clothing(user, models.Shoe, neutral=True)
 
-def _get_clothing_complimentary(user, type, previous_clothing=None):
-    if previous_clothing is None:
-        comp_clothing = _get_coloured_clothing(user, type)
-    else:
-        comp_clothing = None
+        # if still invalid, use a diff colour and try again
+        if valid_bottom is None or valid_shoes is None:
+            usable_colours.pop(main_colour, None)
+            return None
 
-    return comp_clothing
+    return (valid_top, valid_bottom, valid_shoes)
 
-# Returns a list of clothing from the specified clothing type, any non-neutral colour by default or None
+# Returns valid_top, valid_bottom, valid_shoes that are monochromatic, None otherwise.
+# This means clothing with same colour, diff saturation or tint/shade will be returned
+def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
+    # mono includes neutrals
+    main_colour_hex = random.choices(
+        [main_colour_hex, colour_options.neutrals["White"], colour_options.neutrals["Brown"]],
+        weights=(4, 1, 1), k=1
+        )[0]
+
+    top_options = _get_coloured_clothing(user, models.TopClothing, colours=[main_colour_hex])
+    if top_options is None:
+        usable_colours.pop(main_colour, None)
+        return None
+
+    found_outfit = False
+    while len(top_options) > 0:
+        # tops of the same colour will likely have diff saturation and tint/shade,
+        # therefore, choose one top to base the saturation, tint/shade on.
+        valid_top = [random.choice(top_options)]
+        top_saturation = valid_top[0].saturation
+        top_tint_or_shade = valid_top[0].tint_or_shade
+
+        # if neutral, less diff in tint/shade needed. also saturation does nothing
+        if main_colour_hex == "#F7F5F0" or main_colour_hex == "#964B00":
+            # same neutral, diff tint/shade
+            valid_bottom = _get_coloured_clothing(
+            user, models.BottomClothing,
+            colours=[main_colour_hex],
+            non_tint_or_shade_range=(top_tint_or_shade-10, top_tint_or_shade+10))
+        else:
+            # same colour, diff saturation and tint/shade
+            valid_bottom = _get_coloured_clothing(
+                user, models.BottomClothing,
+                colours=[main_colour_hex],
+                non_saturation_range=(top_saturation-20, top_saturation+20),
+                non_tint_or_shade_range=(top_tint_or_shade-20, top_tint_or_shade+20))
+
+        # use diff top of same colour
+        if valid_bottom is None:
+            print()
+            top_options.exclude(pk=valid_top[0].pk)
+            continue
+
+        # same colour, diff saturation and tint/shade
+        valid_shoes = _get_coloured_clothing(
+            user, models.Shoe,
+            colours=[main_colour_hex],
+            non_saturation_range=(top_saturation-20, top_saturation+20),
+            non_tint_or_shade_range=(top_tint_or_shade-20, top_tint_or_shade+20))
+
+        # use diff top of same colour
+        if valid_shoes is None:
+            top_options.exclude(pk=valid_top[0].pk)
+            continue
+
+        found_outfit = True
+        break
+
+    # if all tops with 1 colour don't work, use a diff colour
+    if not found_outfit:
+        usable_colours.pop(main_colour, None) # use a diff colour and try again
+        return None
+
+    return (valid_top, valid_bottom, valid_shoes)
+
+# Returns valid_top, valid_bottom, valid_shoes that where 1 is a colour, the rest are neutrals, None otherwise.
+def _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour_hex):
+    categories = [0,1,2]
+    TOP = 0
+    BOTTOM = 1
+    SHOES = 2
+
+    # loop to retry other categories if chosen category doesn't work
+    while len(categories) > 0:
+        # choose one as a main colour, the rest will be neutral
+        which_is_main_colour = random.choices(categories)[0]
+        if which_is_main_colour == TOP:
+            valid_top = _get_coloured_clothing(user, models.TopClothing, colours=[main_colour_hex])
+            valid_bottom = _get_coloured_clothing(user, models.BottomClothing, neutral=True)
+            valid_shoes = _get_coloured_clothing(user, models.Shoe, neutral=True)
+
+        elif which_is_main_colour == BOTTOM:
+            valid_top = _get_coloured_clothing(user, models.TopClothing, neutral=True)
+            valid_bottom = _get_coloured_clothing(user, models.BottomClothing, colours=[main_colour_hex])
+            valid_shoes = _get_coloured_clothing(user, models.Shoe, neutral=True)
+
+        elif which_is_main_colour == SHOES:
+            valid_top = _get_coloured_clothing(user, models.TopClothing, neutral=True)
+            valid_bottom = _get_coloured_clothing(user, models.BottomClothing, neutral=True)
+            valid_shoes = _get_coloured_clothing(user, models.Shoe, colours=[main_colour_hex])
+
+
+        if valid_top is None or valid_bottom is None or valid_shoes is None:
+            categories.remove(which_is_main_colour)
+            return None
+
+        return (valid_top, valid_bottom, valid_shoes)
+
+    usable_colours.pop(main_colour, None)
+    return None
+
+
+# Returns a list of clothing from the specified clothing type, any colour by default or None
 # if items cannot be found
 # neutral - can be TRUE or FALSE. If TRUE, func will return a list of neutral coloured clothing or None
-# colours - a list of possible colours to choose from, NONE by default. If neutral is NOT None,
+# colours - a list of possible colours to choose from, NONE by default. If neutral is NOT False,
 #           this param will not effect anything.
-# max_saturation - int that specifies max saturation of selected clothings (100 default)
-def _get_coloured_clothing(user, type, neutral=False, colours=None, max_saturation=100):
+# non_saturation_range - a tuple that specifies the saturation range the clothing should NOT be. Allows entire range by default
+# non_tin_or_shade_range - a tuple that specifies the tint/shade range the clothing should NOT be. Allows entire range by default
+def _get_coloured_clothing(user, type, neutral=False, colours=None, non_saturation_range=(-1, -1), non_tint_or_shade_range=(-1, -1)):
     if neutral:
         clothing = type.objects.filter(
             Q(user=user),
-            Q(saturation__lte=max_saturation),
+            ~Q(saturation__range=non_saturation_range)
+            | ~Q(tint_or_shade__range=non_tint_or_shade_range),
             Q(colour=colour_options.get_neutral("Black"))
             | Q(colour=colour_options.get_neutral("White"))
             | Q(colour=colour_options.get_neutral("Grey"))
@@ -238,19 +345,17 @@ def _get_coloured_clothing(user, type, neutral=False, colours=None, max_saturati
         if colours is not None:
             clothing = type.objects.filter(
                 Q(user=user),
-                Q(saturation__lte=max_saturation),
+                ~Q(saturation__range=non_saturation_range)
+                | ~Q(tint_or_shade__range=non_tint_or_shade_range),
                 Q(colour__in=colours)
             )
 
-        # try to find non-neutral coloured clothing
+        # try to find any coloured clothing
         else:
             clothing = type.objects.filter(
                 Q(user=user),
-                Q(saturation__lte=max_saturation),
-                ~Q(colour=colour_options.get_neutral("Black"))
-                | ~Q(colour=colour_options.get_neutral("White"))
-                | ~Q(colour=colour_options.get_neutral("Grey"))
-                | ~Q(colour=colour_options.get_neutral("Brown"))
+                ~Q(saturation__range=non_saturation_range)
+                | ~Q(tint_or_shade__range=non_tint_or_shade_range)
             )
 
     if clothing is not None:
@@ -258,41 +363,3 @@ def _get_coloured_clothing(user, type, neutral=False, colours=None, max_saturati
             return None
 
     return clothing
-
-
-# def _select_clothing(user, choice, type, colour=None):
-#     if choice == FilterColour.NEUTRAL_OR_COMP.value:
-#         comp_colour = colour_options.get_comp_hex_colour(colour)
-#         if comp_colour is None:
-#             return None
-
-#         # get clothing that are complimentary or neutral
-#         clothing = type.objects.filter(
-#             Q(user=user),
-#             Q(colour=comp_colour, saturation__lte=50) # complilmenary colour should have low-ish saturation
-#             | Q(colour=colour_options.get_neutral("Black"))
-#             | Q(colour=colour_options.get_neutral("White"))
-#             | Q(colour=colour_options.get_neutral("Grey"))
-#             | Q(colour=colour_options.get_neutral("Brown"))
-#             )
-
-#     elif choice == FilterColour.NEUTRAL_ONLY.value:
-#         clothing = type.objects.filter(
-#             Q(user=user),
-#             Q(colour=colour_options.get_neutral("Black"))
-#             | Q(colour=colour_options.get_neutral("White"))
-#             | Q(colour=colour_options.get_neutral("Grey"))
-#             | Q(colour=colour_options.get_neutral("Brown"))
-#             )
-
-#     elif choice == FilterColour.ANY_COLOUR.value:
-#         clothing = type.objects.filter(user=user)
-
-#     else:
-#         return None
-
-#     if not clothing:
-#         return None
-
-#     # return random to avoid the same clothing being used all the time
-#     return random.choice(clothing)
