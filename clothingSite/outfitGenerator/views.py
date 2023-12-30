@@ -137,7 +137,6 @@ def _select_outfit(user):
 
     # loop to go through all colour modes if necessary
     while len(colour_modes) > 0:
-
         # choose inital colour mode, and set usable colours (each colour will be removed if no valid outfits found)
         colour_mode = random.choices(list(colour_modes.keys()), weights=tuple(colour_modes.values()))[0]
         print(colour_mode)
@@ -145,7 +144,6 @@ def _select_outfit(user):
 
         # loop through all colours if necessary
         while len(usable_colours) > 0:
-
             # choose a main colour for the outfit
             main_colour = random.choices(list(usable_colours.keys()))[0]
             main_colour_hex = colour_options.colour_wheel[main_colour]
@@ -232,6 +230,7 @@ def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
     if top_options is None:
         usable_colours.pop(main_colour, None)
         return None
+    top_options = list(top_options)
 
     found_outfit = False
     while len(top_options) > 0:
@@ -258,8 +257,7 @@ def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
 
         # use diff top of same colour
         if valid_bottom is None:
-            print()
-            top_options.exclude(pk=valid_top[0].pk)
+            top_options.remove(valid_top[0])
             continue
 
         # same colour, diff saturation and tint/shade
@@ -271,7 +269,7 @@ def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
 
         # use diff top of same colour
         if valid_shoes is None:
-            top_options.exclude(pk=valid_top[0].pk)
+            top_options.remove(valid_top[0])
             continue
 
         found_outfit = True
@@ -313,7 +311,7 @@ def _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour
 
         if valid_top is None or valid_bottom is None or valid_shoes is None:
             categories.remove(which_is_main_colour)
-            return None
+            continue
 
         return (valid_top, valid_bottom, valid_shoes)
 
