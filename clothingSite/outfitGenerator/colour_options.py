@@ -43,6 +43,9 @@ class ColourOptions():
                           "Brown": "#964B00"
                           }
 
+        # values represent weights for when chosen randomly.
+        # semi-neutral should be the most common
+        # CHANGE TO HOW I SEE FIT
         self.colour_modes = {
             OutfitColourModes.COMPLIMENTARY : 1,
             OutfitColourModes.SEMI_NEUTRAL : 2,

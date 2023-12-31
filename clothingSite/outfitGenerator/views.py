@@ -125,8 +125,8 @@ def _get_clothing_obj(clothing_type, pk):
     return obj
 
 # Returns a valid outfit tuple (top, bottom, shoes), taking account of: colour mode (complimentary, mono, neutral, semi-neutral).
-# Algorithm chooses inital paramters (colour mode, main colour) and finds valid outfits that fit the params. A random valid one will be chosen
-# and returned. Algorithm is exhaustive, i.e if no valid outfit is found, it use diff colours, and change colour modes to find a valid outfit.
+# Algorithm chooses inital colour mode and colour and finds valid outfits that fit. A random valid one will be chosen
+# and returned. Algorithm is exhaustive, i.e if no valid outfit is initally found, it use diff colours, and change colour modes to find a valid outfit.
 # In the future, will consider formality, weather, and potentially more.
 def _select_outfit(user):
     valid_top = []
@@ -179,8 +179,10 @@ def _select_outfit(user):
 
             return ([random.choice(valid_top)], [random.choice(valid_bottom)], [random.choice(valid_shoes)])
 
+        # delete the chosen colour mode and try another
         del colour_modes[colour_mode]
 
+    # no valid outfits found
     return None
 
 # Returns valid_top, valid_bottom, valid_shoes that are colour complimentary to each other, None otherwise.
@@ -327,6 +329,7 @@ def _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour
 # non_saturation_range - a tuple that specifies the saturation range the clothing should NOT be. Allows entire range by default
 # non_tin_or_shade_range - a tuple that specifies the tint/shade range the clothing should NOT be. Allows entire range by default
 def _get_coloured_clothing(user, type, neutral=False, colours=None, non_saturation_range=(-1, -1), non_tint_or_shade_range=(-1, -1)):
+    print("querying")
     if neutral:
         clothing = type.objects.filter(
             Q(user=user),

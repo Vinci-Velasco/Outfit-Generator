@@ -33,6 +33,12 @@ class Clothing(models.Model):
 
     class Meta:
         abstract = True
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['saturation']),
+            models.Index(fields=['tint_or_shade']),
+            models.Index(fields=['colour']),
+        ]
 
 class TopClothing(Clothing):
     class Type(models.TextChoices):
