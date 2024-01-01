@@ -158,11 +158,20 @@ def _select_outfit(user):
                 valid_top, valid_bottom, valid_shoes = res
 
             elif colour_mode.value == OutfitColourModes.MONOCHROMATIC.value:
-                usable_neutrals = copy(colour_options.neutrals)
-                main_colour = random.choices(list(usable_colours.keys()) + list(usable_neutrals.keys()))[0]
+                # mono outfits should be able to use neutrals except for black
+                usable_colours["Brown"] = colour_options.get_neutral("Brown")
+                usable_colours["White"] = colour_options.get_neutral("White")
+
+                print(usable_colours)
+                main_colour = random.choices(list(usable_colours.keys()))[0]
                 res = _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex)
+
                 if res is None:
+                    # remove brown and white from usable colours for the other modes
+                    usable_colours.pop("Brown", None)
+                    usable_colours.pop("White", None)
                     continue
+
                 valid_top, valid_bottom, valid_shoes = res
 
             elif colour_mode.value == OutfitColourModes.SEMI_NEUTRAL.value:
@@ -223,12 +232,6 @@ def _select_comp_clothing(user, usable_colours, main_colour, main_colour_hex):
 # Returns valid_top, valid_bottom, valid_shoes that are monochromatic, None otherwise.
 # This means clothing with same colour, diff saturation or tint/shade will be returned
 def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
-    # mono includes neutrals
-    main_colour_hex = random.choices(
-        [main_colour_hex, colour_options.neutrals["White"], colour_options.neutrals["Brown"]],
-        weights=(4, 1, 1), k=1
-        )[0]
-
     top_options = _get_coloured_clothing(user, models.TopClothing, colours=[main_colour_hex])
     if top_options is None:
         del usable_colours[main_colour]
@@ -364,3 +367,24 @@ def _get_coloured_clothing(user, type, neutral=False, colours=None, non_saturati
             return None
 
     return clothing
+
+# Returns new valid_top, valid_bottom, and valid_shoes where the formality matches (i.e you won't have sweatpants paired with a dress shirt)
+def _match_formal_clothing(valid_top, valid_bottom, valid_shoes):
+    new_top = []
+    new_bottom = []
+    new_shoes = []
+
+    is_casual_outfit = random.choices([True, False])[0]
+    for top in valid_top:
+        if top.formality == "Either" or (is_casual_outfit and top.formality == "Casual") or (not is_casual_outfit and top.formality == "Smart-Casual"):
+            new_top.append(top)
+
+    for bottom in valid_bottom:
+        if bottom.formality == "Either" or (is_casual_outfit and bottom.formality == "Casual") or (not is_casual_outfit and bottom.formality == "Smart-Casual"):
+            new_bottom.append(bottom)
+
+    for shoes in valid_shoes:
+        if shoes.formality == "Either" or (is_casual_outfit and shoes.formality == "Casual") or (not is_casual_outfit and shoes.formality == "Smart-Casual"):
+            new_shoes.append(shoes)
+
+    return (new_top, new_bottom, new_shoes)
