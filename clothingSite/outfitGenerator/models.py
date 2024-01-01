@@ -4,7 +4,6 @@ from django.core.validators import MaxValueValidator
 
 
 class Clothing(models.Model):
-
     # Each clothing item will have a colour option derived from the colour wheel.
     class ColourWheel(models.TextChoices):
         RED = "#FF0000", "Red",
@@ -26,9 +25,27 @@ class Clothing(models.Model):
         # GREY = "#808080", "Grey",
         BROWN = "#964B00", "Brown"
 
+    class Formality(models.TextChoices):
+        CASUAL = "Casual", "Casual",
+        SMART = "Smart-Casual", "Smart-Casual",
+        EITHER = "Either", "Either",
+
+    formality_map = {
+            "T-Shirt": Formality.CASUAL,
+            "Dress Shirt": Formality.SMART,
+            "Hoodie": Formality.CASUAL,
+            "Jeans": Formality.EITHER,
+            "Dress Pants": Formality.SMART,
+            "Sweatpants": Formality.EITHER,
+            "Sport Sneakers": Formality.CASUAL,
+            "Dress Shoes": Formality.SMART
+        }
+
     colour = models.CharField(max_length=17, default=ColourWheel.RED, choices=ColourWheel.choices)
     tint_or_shade = models.PositiveIntegerField(default=100, validators=[MaxValueValidator(200)])
     saturation = models.PositiveIntegerField(default=100, validators=[MaxValueValidator(100)])
+    formality = models.CharField(max_length=12, choices=Formality.choices)
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     class Meta:
@@ -51,6 +68,7 @@ class TopClothing(Clothing):
     def __str__(self):
         return self.type + " : " + self.colour
 
+
 class BottomClothing(Clothing):
     class Type(models.TextChoices):
         JEANS = "Jeans", "Jeans",
@@ -59,15 +77,17 @@ class BottomClothing(Clothing):
 
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.JEANS)
 
+
     def __str__(self):
             return self.type + " : " + self.colour
 
+
 class Shoe(Clothing):
     class Type(models.TextChoices):
-        SNEAKERS = "Sneakers", "Sneakers",
+        SPORT_SNEAKERS = "Sport Sneakers", "Sport Sneakers",
         DRESS_SHOES = "Dress Shoes", "Dress Shoes",
 
-    type = models.CharField(max_length=15, choices=Type.choices, default=Type.SNEAKERS)
+    type = models.CharField(max_length=15, choices=Type.choices, default=Type.SPORT_SNEAKERS)
 
     def __str__(self):
             return self.type + " : " + self.colour

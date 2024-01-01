@@ -42,6 +42,7 @@ def add_clothing_view(request, clothing_type):
             if request.user.is_authenticated:
                 form = form.save(commit=False)
                 form.user = request.user # Add current logged-in user to the form data
+                form.formality = models.Clothing.formality_map[form.type]
                 form.save()
 
     return HttpResponseRedirect(reverse("outfitGenerator:wardrobe"))
@@ -190,7 +191,7 @@ def _select_outfit(user):
 def _select_comp_clothing(user, usable_colours, main_colour, main_colour_hex):
     valid_top = _get_coloured_clothing(user, models.TopClothing, colours=[main_colour_hex])
     if valid_top is None:
-        usable_colours.pop(main_colour, None) # use a diff colour and try again
+        del usable_colours[main_colour] # use a diff colour and try again
         return None
 
     comp_colour_hex = colour_options.get_comp_hex_colour(main_colour_hex)
@@ -214,7 +215,7 @@ def _select_comp_clothing(user, usable_colours, main_colour, main_colour_hex):
 
         # if still invalid, use a diff colour and try again
         if valid_bottom is None or valid_shoes is None:
-            usable_colours.pop(main_colour, None)
+            del usable_colours[main_colour]
             return None
 
     return (valid_top, valid_bottom, valid_shoes)
@@ -230,7 +231,7 @@ def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
 
     top_options = _get_coloured_clothing(user, models.TopClothing, colours=[main_colour_hex])
     if top_options is None:
-        usable_colours.pop(main_colour, None)
+        del usable_colours[main_colour]
         return None
     top_options = list(top_options)
 
@@ -279,7 +280,7 @@ def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
 
     # if all tops with 1 colour don't work, use a diff colour
     if not found_outfit:
-        usable_colours.pop(main_colour, None) # use a diff colour and try again
+        del usable_colours[main_colour] # use a diff colour and try again
         return None
 
     return (valid_top, valid_bottom, valid_shoes)
@@ -321,7 +322,7 @@ def _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour
     return None
 
 
-# Returns a list of clothing from the specified clothing type, any colour by default or None
+# Returns a QuerySet of clothing from the specified clothing type, any colour by default or None
 # if items cannot be found
 # neutral - can be TRUE or FALSE. If TRUE, func will return a list of neutral coloured clothing or None
 # colours - a list of possible colours to choose from, NONE by default. If neutral is NOT False,
@@ -329,7 +330,6 @@ def _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour
 # non_saturation_range - a tuple that specifies the saturation range the clothing should NOT be. Allows entire range by default
 # non_tin_or_shade_range - a tuple that specifies the tint/shade range the clothing should NOT be. Allows entire range by default
 def _get_coloured_clothing(user, type, neutral=False, colours=None, non_saturation_range=(-1, -1), non_tint_or_shade_range=(-1, -1)):
-    print("querying")
     if neutral:
         clothing = type.objects.filter(
             Q(user=user),
