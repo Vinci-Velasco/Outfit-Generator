@@ -4,7 +4,8 @@ from enum import Enum
 class OutfitColourModes(Enum):
     COMPLIMENTARY = 0
     SEMI_NEUTRAL = 1
-    MONOCHROMATIC =3
+    FULL_NEUTRAL = 2
+    MONOCHROMATIC = 3
 
 
 class ColourOptions():
@@ -44,12 +45,13 @@ class ColourOptions():
                           }
 
         # values represent weights for when chosen randomly.
-        # semi-neutral should be the most common
+        # semi-Neutral and full-neutral are highest because they are the easiest outfits for most people to pull off.
         # CHANGE TO HOW I SEE FIT
         self.colour_modes = {
-            OutfitColourModes.COMPLIMENTARY : 1,
-            OutfitColourModes.SEMI_NEUTRAL : 2,
-            OutfitColourModes.MONOCHROMATIC : 1
+            OutfitColourModes.COMPLIMENTARY : 2,
+            OutfitColourModes.SEMI_NEUTRAL : 4,
+            OutfitColourModes.MONOCHROMATIC : 2,
+            OutfitColourModes.FULL_NEUTRAL: 3
         }
 
 

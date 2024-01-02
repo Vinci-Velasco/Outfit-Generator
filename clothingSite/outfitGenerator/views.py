@@ -42,7 +42,13 @@ def add_clothing_view(request, clothing_type):
             if request.user.is_authenticated:
                 form = form.save(commit=False)
                 form.user = request.user # Add current logged-in user to the form data
+
+                # add appropiate formality rating based on clothing type
                 form.formality = models.Clothing.formality_map[form.type]
+                if type(form) == models.BottomClothing or type(form) == models.Shoe:
+                    # bottoms and shoes should only be higher formality if they are a neutral colour
+                    if not colour_options.is_neutral(form.colour):
+                        form.formality = "Casual"
                 form.save()
 
     return HttpResponseRedirect(reverse("outfitGenerator:wardrobe"))
@@ -145,16 +151,16 @@ def _select_outfit(user):
 
         # loop through all colours if necessary
         while len(usable_colours) > 0:
-            # choose a main colour for the outfit
-            main_colour = random.choices(list(usable_colours.keys()))[0]
-            main_colour_hex = colour_options.colour_wheel[main_colour]
-
             # select valid tops, bottoms, shoes based on colour mode
             if colour_mode.value == OutfitColourModes.COMPLIMENTARY.value:
+                # choose a main colour for the outfit
+                main_colour = random.choices(list(usable_colours.keys()))[0]
+                main_colour_hex = colour_options.colour_wheel[main_colour]
+
                 res = _select_comp_clothing(user, usable_colours, main_colour, main_colour_hex)
                 if res is None:
-
                     continue
+
                 valid_top, valid_bottom, valid_shoes = res
 
             elif colour_mode.value == OutfitColourModes.MONOCHROMATIC.value:
@@ -162,10 +168,12 @@ def _select_outfit(user):
                 usable_colours["Brown"] = colour_options.get_neutral("Brown")
                 usable_colours["White"] = colour_options.get_neutral("White")
 
-                print(usable_colours)
                 main_colour = random.choices(list(usable_colours.keys()))[0]
-                res = _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex)
+                main_colour_hex = colour_options.colour_wheel.get(main_colour, None)
+                if main_colour_hex is None:
+                    main_colour_hex = colour_options.neutrals.get(main_colour, None)
 
+                res = _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex)
                 if res is None:
                     # remove brown and white from usable colours for the other modes
                     usable_colours.pop("Brown", None)
@@ -175,8 +183,18 @@ def _select_outfit(user):
                 valid_top, valid_bottom, valid_shoes = res
 
             elif colour_mode.value == OutfitColourModes.SEMI_NEUTRAL.value:
+                main_colour = random.choices(list(usable_colours.keys()))[0]
+                main_colour_hex = colour_options.colour_wheel[main_colour]
+
                 res = _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour_hex)
                 if res is None:
+                    continue
+                valid_top, valid_bottom, valid_shoes = res
+
+            elif colour_mode.value == OutfitColourModes.FULL_NEUTRAL.value:
+                res = _select_full_neutral_clothing(user)
+                if res is None:
+                    usable_colours = {}
                     continue
                 valid_top, valid_bottom, valid_shoes = res
 
@@ -186,6 +204,12 @@ def _select_outfit(user):
 
             # do more filtering on valid lists based on formality, weather, etc. here
             # ...
+
+            res = _match_formal_clothing(valid_top, valid_bottom, valid_shoes)
+            if res is None:
+                print("yessir")
+                continue
+            valid_top, valid_bottom, valid_shoes = res
 
             return ([random.choice(valid_top)], [random.choice(valid_bottom)], [random.choice(valid_shoes)])
 
@@ -266,12 +290,19 @@ def _select_mono_clothing(user, usable_colours, main_colour, main_colour_hex):
             top_options.remove(valid_top[0])
             continue
 
-        # same colour, diff saturation and tint/shade
-        valid_shoes = _get_coloured_clothing(
-            user, models.Shoe,
-            colours=[main_colour_hex],
-            non_saturation_range=(top_saturation-20, top_saturation+20),
-            non_tint_or_shade_range=(top_tint_or_shade-20, top_tint_or_shade+20))
+        # if neutral, less diff in tint/shade needed. also saturation does nothing
+        if main_colour_hex == "#F7F5F0" or main_colour_hex == "#964B00":
+            valid_shoes = _get_coloured_clothing(
+                user, models.Shoe,
+                colours=[main_colour_hex],
+                non_tint_or_shade_range=(top_tint_or_shade-10, top_tint_or_shade+10))
+        else:
+            # same colour, diff saturation and tint/shade
+            valid_shoes = _get_coloured_clothing(
+                user, models.Shoe,
+                colours=[main_colour_hex],
+                non_saturation_range=(top_saturation-20, top_saturation+20),
+                non_tint_or_shade_range=(top_tint_or_shade-20, top_tint_or_shade+20))
 
         # use diff top of same colour
         if valid_shoes is None:
@@ -324,6 +355,18 @@ def _select_semi_neutral_clothing(user, usable_colours, main_colour, main_colour
     usable_colours.pop(main_colour, None)
     return None
 
+# Returns valid_top, valid_bottom, valid_shoes that are all neutrals
+def _select_full_neutral_clothing(user):
+    valid_top = _get_coloured_clothing(user, models.TopClothing, neutral=True)
+    valid_bottom = _get_coloured_clothing(user, models.BottomClothing, neutral=True)
+    valid_shoes = _get_coloured_clothing(user, models.Shoe, neutral=True)
+
+
+    if valid_top is None or valid_bottom is None or valid_shoes is None:
+        return None
+
+    print ((valid_top, valid_bottom, valid_shoes))
+    return (valid_top, valid_bottom, valid_shoes)
 
 # Returns a QuerySet of clothing from the specified clothing type, any colour by default or None
 # if items cannot be found
@@ -368,23 +411,47 @@ def _get_coloured_clothing(user, type, neutral=False, colours=None, non_saturati
 
     return clothing
 
-# Returns new valid_top, valid_bottom, and valid_shoes where the formality matches (i.e you won't have sweatpants paired with a dress shirt)
+# Returns new valid_top, valid_bottom, and valid_shoes where the formality matches (i.e you won't have sweatpants paired with a dress shirt).
+# This is done by checking the formality all matches (either all casual or all smart-casual. some clothing items can work for either)
 def _match_formal_clothing(valid_top, valid_bottom, valid_shoes):
-    new_top = []
-    new_bottom = []
-    new_shoes = []
-
     is_casual_outfit = random.choices([True, False])[0]
-    for top in valid_top:
-        if top.formality == "Either" or (is_casual_outfit and top.formality == "Casual") or (not is_casual_outfit and top.formality == "Smart-Casual"):
-            new_top.append(top)
 
-    for bottom in valid_bottom:
-        if bottom.formality == "Either" or (is_casual_outfit and bottom.formality == "Casual") or (not is_casual_outfit and bottom.formality == "Smart-Casual"):
-            new_bottom.append(bottom)
+    # loop to try the other formality if chosen one doesn't work (only two modes so loop twice maximum)
+    i = 0
+    while i < 2:
+        i +=1
 
-    for shoes in valid_shoes:
-        if shoes.formality == "Either" or (is_casual_outfit and shoes.formality == "Casual") or (not is_casual_outfit and shoes.formality == "Smart-Casual"):
-            new_shoes.append(shoes)
+        new_top = []
+        new_bottom = []
+        new_shoes = []
 
-    return (new_top, new_bottom, new_shoes)
+        for top in valid_top:
+            if top.formality == "Either" or (is_casual_outfit and top.formality == "Casual") or (not is_casual_outfit and top.formality == "Smart-Casual"):
+                new_top.append(top)
+
+        # no valid tops, switch formality and try again
+        if len(new_top) == 0:
+            is_casual_outfit = not is_casual_outfit
+            continue
+
+        for bottom in valid_bottom:
+            if bottom.formality == "Either" or (is_casual_outfit and bottom.formality == "Casual") or (not is_casual_outfit and bottom.formality == "Smart-Casual"):
+                new_bottom.append(bottom)
+
+        # no valid bottoms, switch formality and try again
+        if len(new_bottom) == 0:
+            is_casual_outfit = not is_casual_outfit
+            continue
+
+        for shoes in valid_shoes:
+            if shoes.formality == "Either" or (is_casual_outfit and shoes.formality == "Casual") or (not is_casual_outfit and shoes.formality == "Smart-Casual"):
+                new_shoes.append(shoes)
+
+        # no valid shoes, switch formality and try again
+        if len(new_shoes) == 0:
+            is_casual_outfit = not is_casual_outfit
+            continue
+
+        return (new_top, new_bottom, new_shoes)
+
+    return None
