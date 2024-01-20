@@ -21,7 +21,7 @@ class Clothing(models.Model):
 
         # NEUTRALS
         BLACK = "#242526", "Black", # slight off-black to distinguish black border lines of clothing
-        WHITE = "#F7F5F0", "White", # slight off-white to distinguish black border lines of clothing
+        WHITE = "#F7F5F0", "White", # slight off-white to distinguish white lines of clothing
         # GREY = "#808080", "Grey",
         BROWN = "#964B00", "Brown"
 
@@ -31,14 +31,16 @@ class Clothing(models.Model):
         EITHER = "Either", "Either",
 
     formality_map = {
-            "T-Shirt": Formality.CASUAL,
-            "Dress Shirt": Formality.SMART,
-            "Hoodie": Formality.CASUAL,
-            "Jeans": Formality.EITHER,
-            "Dress Pants": Formality.SMART,
-            "Sweatpants": Formality.EITHER,
-            "Sport Sneakers": Formality.CASUAL,
-            "Dress Shoes": Formality.SMART
+            "tshirt": Formality.CASUAL,
+            "dress_shirt": Formality.SMART,
+            "hoodie": Formality.CASUAL,
+            "formal_jacket": Formality.SMART,
+            "varsity": Formality.CASUAL,
+            "jeans": Formality.EITHER,
+            "dress_pants": Formality.SMART,
+            "sweatpants": Formality.EITHER,
+            "sport_sneakers": Formality.CASUAL,
+            "dress_shoes": Formality.SMART
         }
 
     colour = models.CharField(max_length=17, default=ColourWheel.RED, choices=ColourWheel.choices)
@@ -57,11 +59,19 @@ class Clothing(models.Model):
             models.Index(fields=['colour']),
         ]
 
+
+# When adding new type of sub clothing:
+#  1. add it to the type subclass
+#  2. make sure name of type stored in the db is the same as the svg html file
+#  3. add to the formality map in the Clothing class above
+
 class TopClothing(Clothing):
     class Type(models.TextChoices):
-        TSHIRT = "T-Shirt", "T-Shirt",
-        DRESS_SHIRT = "Dress Shirt", "Dress Shirt",
-        HOODIE = "Hoodie", "Hoodie",
+        TSHIRT = "tshirt", "T-Shirt",
+        DRESS_SHIRT = "dress_shirt", "Dress Shirt",
+        HOODIE = "hoodie", "Hoodie",
+        FORMAL_JACKET = "formal_jacket", "Formal Jacket",
+        VARSITY_JACKET = "varsity", "Varsity Jacket"
 
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.TSHIRT)
 
@@ -71,9 +81,9 @@ class TopClothing(Clothing):
 
 class BottomClothing(Clothing):
     class Type(models.TextChoices):
-        JEANS = "Jeans", "Jeans",
-        DRESS_PANTS = "Dress Pants", "Dress Pants",
-        SWEATPANTS = "Sweatpants", "Sweatpants",
+        JEANS = "jeans", "Jeans",
+        DRESS_PANTS = "dress_pants", "Dress Pants",
+        SWEATPANTS = "sweatpants", "Sweatpants",
 
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.JEANS)
 
@@ -84,8 +94,8 @@ class BottomClothing(Clothing):
 
 class Shoe(Clothing):
     class Type(models.TextChoices):
-        SPORT_SNEAKERS = "Sport Sneakers", "Sport Sneakers",
-        DRESS_SHOES = "Dress Shoes", "Dress Shoes",
+        SPORT_SNEAKERS = "sport_sneakers", "Sport Sneakers",
+        DRESS_SHOES = "dress_shoes", "Dress Shoes",
 
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.SPORT_SNEAKERS)
 

@@ -24,14 +24,9 @@
         </form>
     {% if topclothing %}
         {% for clothing in topclothing %}
-
-            {% if clothing.type == "T-Shirt" %}
-              {% include "outfitGenerator/svg_templates/top/tshirt.html" %}
-            {% elif clothing.type == "Dress Shirt" %}
-              {% include "outfitGenerator/svg_templates/top/dress_shirt.html" %}
-            {% elif clothing.type == "Hoodie" %}
-              {% include "outfitGenerator/svg_templates/top/hoodie.html" %}
-            {% endif %}
+            {% with "outfitGenerator/svg_templates/top/"|add:clothing.type|add:".html" as path %}
+                {% include path %}
+            {% endwith %}
 
             <form action="{% url 'outfitGenerator:remove_clothing' 'top' clothing.pk %}" method="post">
                 {% csrf_token %}
@@ -45,14 +40,9 @@
 
     {% if bottomclothing %}
         {% for clothing in bottomclothing %}
-
-            {% if clothing.type == "Jeans" %}
-              {% include "outfitGenerator/svg_templates/bottom/jeans.html" %}
-            {% elif clothing.type == "Dress Pants" %}
-                {% include "outfitGenerator/svg_templates/bottom/dress_pants.html" %}
-            {% elif clothing.type == "Sweatpants" %}
-              {% include "outfitGenerator/svg_templates/bottom/sweatpants.html" %}
-            {% endif %}
+            {% with "outfitGenerator/svg_templates/bottom/"|add:clothing.type|add:".html" as path %}
+                {% include path %}
+            {% endwith %}
 
             <form action="{% url 'outfitGenerator:remove_clothing' 'bottom' clothing.pk %}" method="post">
                 {% csrf_token %}
@@ -66,12 +56,9 @@
 
     {% if shoes %}
         {% for shoe in shoes %}
-
-            {% if shoe.type == "Sport Sneakers" %}
-              {% include "outfitGenerator/svg_templates/shoes/sneakers.html" %}
-            {% elif shoe.type == "Dress Shoes" %}
-              {% include "outfitGenerator/svg_templates/shoes/dress_shoes.html" %}
-            {% endif %}
+            {% with "outfitGenerator/svg_templates/shoes/"|add:shoe.type|add:".html" as path %}
+                {% include path %}
+            {% endwith %}
 
             <form action="{% url 'outfitGenerator:remove_clothing' 'shoes' shoe.pk %}" method="post">
                 {% csrf_token %}

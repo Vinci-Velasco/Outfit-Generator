@@ -66,7 +66,6 @@ def generate_outfit_view(request):
 
     if request.method == "POST":
         clothing = _select_outfit(request.user)
-        print(clothing)
         if clothing is None:
             error_msg = "Could not find matching clothes (no matching colours or missing clothing in category)"
             return render(request, "outfitGenerator/generate_outfit.html", {
@@ -207,7 +206,6 @@ def _select_outfit(user):
 
             res = _match_formal_clothing(valid_top, valid_bottom, valid_shoes)
             if res is None:
-                print("yessir")
                 continue
             valid_top, valid_bottom, valid_shoes = res
 
@@ -365,7 +363,6 @@ def _select_full_neutral_clothing(user):
     if valid_top is None or valid_bottom is None or valid_shoes is None:
         return None
 
-    print ((valid_top, valid_bottom, valid_shoes))
     return (valid_top, valid_bottom, valid_shoes)
 
 # Returns a QuerySet of clothing from the specified clothing type, any colour by default or None
@@ -452,6 +449,7 @@ def _match_formal_clothing(valid_top, valid_bottom, valid_shoes):
             is_casual_outfit = not is_casual_outfit
             continue
 
+        print(f"Casual outfit: {is_casual_outfit}")
         return (new_top, new_bottom, new_shoes)
 
     return None
